@@ -20,6 +20,17 @@ struct FolderRouterTests {
     #expect(result.cleanedText == "I saw your face in the crowd tonight")
   }
 
+  @Test func routesMusicWithCommaToMusicFolder() {
+    let folders = makeFolders()
+    let result = FolderRouter.route(
+      transcript: "music, i like to play the piano",
+      folders: folders
+    )
+
+    #expect(result.folder.name == "Music")
+    #expect(result.cleanedText == "i like to play the piano")
+  }
+
   @Test func routesUnknownKeywordToInbox() {
     let folders = makeFolders()
     let result = FolderRouter.route(
@@ -29,12 +40,6 @@ struct FolderRouterTests {
 
     #expect(result.folder.name == "Inbox")
     #expect(result.cleanedText == "School finish the essay draft")
-  }
-
-  @Test func stripsPunctuationFromKeyword() {
-    let parsed = FolderRouter.parse(transcript: "Music, I left my heart in the chorus again")
-    #expect(parsed.folderKeyword == "music")
-    #expect(parsed.cleanedText == "I left my heart in the chorus again")
   }
 
   @Test func handlesKeywordOnlyTranscript() {

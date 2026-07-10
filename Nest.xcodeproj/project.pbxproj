@@ -395,6 +395,7 @@
 				ENABLE_PREVIEWS = YES;
 				ENABLE_USER_SELECTED_FILES = readonly;
 				GENERATE_INFOPLIST_FILE = YES;
+				INFOPLIST_KEY_NSCameraUsageDescription = "Nest uses the camera so you can photograph something matching a grounding color.";
 				INFOPLIST_KEY_NSMicrophoneUsageDescription = "Nest needs the microphone to capture your thoughts by voice.";
 				INFOPLIST_KEY_NSSpeechRecognitionUsageDescription = "Nest uses speech recognition to turn your spoken thoughts into text.";
 				"INFOPLIST_KEY_UIApplicationSceneManifest_Generation[sdk=iphoneos*]" = YES;
@@ -440,6 +441,7 @@
 				ENABLE_PREVIEWS = YES;
 				ENABLE_USER_SELECTED_FILES = readonly;
 				GENERATE_INFOPLIST_FILE = YES;
+				INFOPLIST_KEY_NSCameraUsageDescription = "Nest uses the camera so you can photograph something matching a grounding color.";
 				INFOPLIST_KEY_NSMicrophoneUsageDescription = "Nest needs the microphone to capture your thoughts by voice.";
 				INFOPLIST_KEY_NSSpeechRecognitionUsageDescription = "Nest uses speech recognition to turn your spoken thoughts into text.";
 				"INFOPLIST_KEY_UIApplicationSceneManifest_Generation[sdk=iphoneos*]" = YES;

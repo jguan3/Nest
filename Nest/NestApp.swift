@@ -5,7 +5,7 @@ import SwiftUI
 struct NestApp: App {
     var body: some Scene {
         WindowGroup {
-            CaptureView()
+            MainTabView()
         }
         .modelContainer(for: [Thought.self, ThoughtFolder.self]) { result in
             if case .success(let container) = result {

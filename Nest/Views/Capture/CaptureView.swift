@@ -17,61 +17,129 @@ struct CaptureView: View {
             ZStack {
                 NestBackground()
 
-                VStack(spacing: 0) {
-                    header
-                        .padding(.top, 8)
-
-                    Spacer()
-
-                    if isRecording {
-                        recordingWaveform
-                            .padding(.horizontal, 20)
-                            .transition(.opacity.combined(with: .scale(scale: 0.98)))
-                    } else {
-                        transcriptCard
-                            .padding(.horizontal, 20)
-                            .transition(.opacity)
-                    }
-
-                    Spacer()
-
-                    VStack(spacing: 20) {
-                        captureControls
-                        if !isRecording {
-                            FolderChipRow(folders: folders)
-                                .padding(.horizontal, 20)
-                            hintText
-                        }
-                    }
-                    .padding(.bottom, 28)
-                }
-                .animation(.spring(response: 0.4, dampingFraction: 0.85), value: isRecording)
-
-                if let folderName = viewModel.savedFolderName,
-                   let colorName = viewModel.savedFolderColorName {
-                    VStack {
-                        SavedToast(folderName: folderName, colorName: colorName)
-                            .padding(.top, 8)
-                        Spacer()
-                    }
-                    .animation(.spring(response: 0.35), value: viewModel.savedFolderName)
+                if isRecording {
+                    recordingLayout
+                } else if viewModel.captureState == .processing {
+                    processingLayout
+                } else {
+                    homeLayout
                 }
             }
             .toolbar(.hidden, for: .navigationBar)
             .sheet(isPresented: $isLibraryPresented) {
                 LibraryView()
             }
+            .sheet(isPresented: Binding(
+                get: { viewModel.folderToOpen != nil },
+                set: { if !$0 { viewModel.folderToOpen = nil } }
+            )) {
+                if let folder = viewModel.folderToOpen {
+                    NavigationStack {
+                        FolderDetailView(folder: folder)
+                            .toolbar {
+                                ToolbarItem(placement: .topBarTrailing) {
+                                    Button("Done") {
+                                        viewModel.folderToOpen = nil
+                                    }
+                                    .foregroundStyle(NestTheme.primaryText)
+                                }
+                            }
+                    }
+                }
+            }
         }
         .preferredColorScheme(.dark)
+        .animation(.spring(response: 0.4, dampingFraction: 0.85), value: isRecording)
+        .toolbar(isRecording || viewModel.captureState == .processing ? .hidden : .visible, for: .tabBar)
+    }
+
+    private var homeLayout: some View {
+        VStack(spacing: 0) {
+            header
+                .padding(.top, 8)
+
+            Spacer()
+
+            routingHint
+                .padding(.horizontal, 24)
+                .padding(.bottom, 20)
+
+            EmptyThoughtsButton(isDisabled: false) {
+                Task { await viewModel.startRecording() }
+            }
+            .padding(.horizontal, 24)
+
+            if let error = viewModel.errorMessage, viewModel.captureState == .error {
+                Text(error)
+                    .font(.footnote)
+                    .foregroundStyle(.orange)
+                    .padding(.top, 12)
+                    .padding(.horizontal, 24)
+            }
+
+            Spacer()
+
+            VStack(alignment: .leading, spacing: 8) {
+                Text("Say a folder name first")
+                    .font(.caption.weight(.semibold))
+                    .foregroundStyle(NestTheme.secondaryText)
+                    .padding(.horizontal, 24)
+
+                FolderChipRow(folders: folders) { folder in
+                    viewModel.folderToOpen = folder
+                }
+            }
+            .padding(.bottom, 28)
+        }
+    }
+
+    /// Explains that the first spoken word routes the memo into a matching folder.
+    private var routingHint: some View {
+        VStack(spacing: 8) {
+            Text("Speak the folder name first")
+                .font(.subheadline.weight(.semibold))
+                .foregroundStyle(NestTheme.primaryText)
+
+            Text("Example: “Music, I left my heart in the chorus.”")
+                .font(.footnote)
+                .foregroundStyle(NestTheme.secondaryText)
+                .multilineTextAlignment(.center)
+
+            Text("Nest saves it to that folder automatically.")
+                .font(.caption)
+                .foregroundStyle(NestTheme.secondaryText.opacity(0.9))
+                .multilineTextAlignment(.center)
+        }
+        .padding(.horizontal, 16)
+        .padding(.vertical, 14)
+        .frame(maxWidth: .infinity)
+        .background(
+            RoundedRectangle(cornerRadius: 16, style: .continuous)
+                .fill(NestTheme.cardBackground)
+                .overlay(
+                    RoundedRectangle(cornerRadius: 16, style: .continuous)
+                        .strokeBorder(NestTheme.cardStroke, lineWidth: 1)
+                )
+        )
+    }
+
+    private var processingLayout: some View {
+        VStack(spacing: 16) {
+            ProgressView()
+                .tint(.white)
+            Text("Transcribing…")
+                .font(.subheadline)
+                .foregroundStyle(NestTheme.secondaryText)
+        }
     }
 
     private var header: some View {
         HStack {
             VStack(alignment: .leading, spacing: 4) {
-                Text("Nest")
+                Text("Voice")
                     .font(.largeTitle.weight(.bold))
                     .foregroundStyle(NestTheme.primaryText)
-                Text(isRecording ? "Let it out…" : "Catch it before it's gone")
+                Text("Catch it before it's gone")
                     .font(.subheadline)
                     .foregroundStyle(NestTheme.secondaryText)
             }
@@ -94,88 +162,18 @@ struct CaptureView: View {
         .padding(.horizontal, 24)
     }
 
-    private var transcriptCard: some View {
-        VStack(spacing: 12) {
-            Text(displayTranscript)
-                .font(.title2.weight(viewModel.partialTranscript.isEmpty ? .regular : .medium))
-                .multilineTextAlignment(.center)
-                .foregroundStyle(
-                    viewModel.partialTranscript.isEmpty ? NestTheme.secondaryText : NestTheme.primaryText
-                )
-                .frame(minHeight: 100)
-                .frame(maxWidth: .infinity)
-                .animation(.easeInOut(duration: 0.15), value: viewModel.partialTranscript)
-        }
-        .padding(24)
-        .background(cardBackground)
-    }
-
-    private var recordingWaveform: some View {
-        VStack(spacing: 20) {
-            LiveWaveformView(
-                samples: viewModel.waveformSamples,
-                density: viewModel.speechDensity
-            )
-            .frame(height: 140)
-            .padding(.horizontal, 8)
-            .padding(.vertical, 24)
-            .background(cardBackground)
-
-            if !viewModel.partialTranscript.isEmpty {
-                Text(viewModel.partialTranscript)
-                    .font(.title3.weight(.medium))
-                    .multilineTextAlignment(.center)
-                    .foregroundStyle(NestTheme.primaryText)
-                    .frame(maxWidth: .infinity)
-                    .padding(.horizontal, 8)
-                    .transition(.opacity)
-            }
-        }
-    }
-
-    @ViewBuilder
-    private var captureControls: some View {
-        switch viewModel.captureState {
-        case .listening:
-            StopRecordingButton {
+    private var recordingLayout: some View {
+        RecordingScreenView(
+            amplitude: viewModel.currentAmplitude,
+            density: viewModel.speechDensity,
+            samples: viewModel.waveformSamples,
+            partialTranscript: viewModel.partialTranscript,
+            onStop: {
                 Task {
                     await viewModel.stopRecording(folders: folders, modelContext: modelContext)
                 }
             }
-        case .processing:
-            Text("Saving…")
-                .font(.subheadline.weight(.medium))
-                .foregroundStyle(NestTheme.secondaryText)
-        default:
-            EmptyThoughtsButton(isDisabled: viewModel.captureState == .processing) {
-                Task { await viewModel.startRecording() }
-            }
-        }
-    }
-
-    private var cardBackground: some View {
-        RoundedRectangle(cornerRadius: 24, style: .continuous)
-            .fill(NestTheme.cardBackground)
-            .overlay(
-                RoundedRectangle(cornerRadius: 24, style: .continuous)
-                    .strokeBorder(NestTheme.cardStroke, lineWidth: 1)
-            )
-    }
-
-    private var displayTranscript: String {
-        if !viewModel.partialTranscript.isEmpty {
-            return viewModel.partialTranscript
-        }
-        if let error = viewModel.errorMessage, viewModel.captureState == .error {
-            return error
-        }
-        return "Your words will appear here"
-    }
-
-    private var hintText: some View {
-        Text("Say a folder name, then your thought")
-            .font(.footnote)
-            .foregroundStyle(NestTheme.secondaryText.opacity(0.8))
+        )
     }
 }
 

@@ -7,7 +7,7 @@ struct EmptyThoughtsButton: View {
 
     var body: some View {
         Button(action: action) {
-            Text("empty your thoughts")
+            Text("Empty your thoughts")
                 .font(.title3.weight(.semibold))
                 .foregroundStyle(.white)
                 .frame(maxWidth: .infinity)
@@ -25,7 +25,6 @@ struct EmptyThoughtsButton: View {
         .buttonStyle(.plain)
         .disabled(isDisabled)
         .opacity(isDisabled ? 0.55 : 1)
-        .padding(.horizontal, 20)
     }
 }
 
@@ -35,27 +34,34 @@ struct StopRecordingButton: View {
 
     var body: some View {
         Button(action: action) {
-            Text("stop")
-                .font(.headline.weight(.bold))
-                .foregroundStyle(.white)
-                .frame(width: 120, height: 48)
-                .background(
-                    Capsule(style: .continuous)
-                        .fill(
-                            LinearGradient(
-                                colors: [
-                                    Color(red: 1.0, green: 0.35, blue: 0.38),
-                                    Color(red: 0.92, green: 0.22, blue: 0.34)
-                                ],
-                                startPoint: .topLeading,
-                                endPoint: .bottomTrailing
-                            )
+            HStack(spacing: 8) {
+                RoundedRectangle(cornerRadius: 2, style: .continuous)
+                    .fill(Color.red)
+                    .frame(width: 12, height: 12)
+                Text("Stop")
+                    .font(.headline.weight(.bold))
+            }
+            .foregroundStyle(.white)
+            .padding(.horizontal, 32)
+            .padding(.vertical, 16)
+            .background(
+                Capsule(style: .continuous)
+                    .fill(
+                        LinearGradient(
+                            colors: [
+                                Color(red: 0.95, green: 0.28, blue: 0.38),
+                                Color(red: 0.78, green: 0.18, blue: 0.42)
+                            ],
+                            startPoint: .topLeading,
+                            endPoint: .bottomTrailing
                         )
-                )
-                .overlay(
-                    Capsule(style: .continuous)
-                        .strokeBorder(Color.white.opacity(0.25), lineWidth: 1)
-                )
+                    )
+            )
+            .overlay(
+                Capsule(style: .continuous)
+                    .strokeBorder(Color.red.opacity(0.35), lineWidth: 1)
+            )
+            .shadow(color: Color.red.opacity(0.45), radius: 18, y: 8)
         }
         .buttonStyle(.plain)
         .accessibilityLabel("Stop recording")
