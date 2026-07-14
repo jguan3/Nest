@@ -5,11 +5,15 @@ import SwiftUI
 struct CaptureView: View {
     @Environment(\.modelContext) private var modelContext
     @Query(sort: \ThoughtFolder.sortOrder) private var folders: [ThoughtFolder]
-    @StateObject private var viewModel = CaptureViewModel()
+    @ObservedObject var viewModel: CaptureViewModel
     @State private var isLibraryPresented = false
 
     private var isRecording: Bool {
         viewModel.captureState == .listening
+    }
+
+    private var isProcessing: Bool {
+        viewModel.captureState == .processing
     }
 
     var body: some View {
@@ -19,7 +23,7 @@ struct CaptureView: View {
 
                 if isRecording {
                     recordingLayout
-                } else if viewModel.captureState == .processing {
+                } else if isProcessing {
                     processingLayout
                 } else {
                     homeLayout
@@ -47,10 +51,49 @@ struct CaptureView: View {
                     }
                 }
             }
+            .fullScreenCover(isPresented: reflectingBinding) {
+                if case .reflecting(let analysis) = viewModel.captureState {
+                    ReflectionResultView(
+                        analysis: analysis,
+                        savedFolderName: viewModel.savedFolderName,
+                        savedFolderColorName: viewModel.savedFolderColorName,
+                        onKeepSharing: {
+                            viewModel.dismissReflection()
+                            Task { await viewModel.startRecording() }
+                        },
+                        onTakeAMoment: { viewModel.requestToolNavigation(analysis.recommendedTool) },
+                        onDoneForNow: { viewModel.dismissReflection() }
+                    )
+                }
+            }
+            .fullScreenCover(isPresented: crisisBinding) {
+                CrisisSupportView(
+                    savedFolderName: viewModel.savedFolderName,
+                    savedFolderColorName: viewModel.savedFolderColorName,
+                    onDismiss: { viewModel.dismissCrisis() }
+                )
+            }
         }
         .preferredColorScheme(.dark)
         .animation(.spring(response: 0.4, dampingFraction: 0.85), value: isRecording)
-        .toolbar(isRecording || viewModel.captureState == .processing ? .hidden : .visible, for: .tabBar)
+        .toolbar(isRecording || isProcessing ? .hidden : .visible, for: .tabBar)
+    }
+
+    private var reflectingBinding: Binding<Bool> {
+        Binding(
+            get: {
+                if case .reflecting = viewModel.captureState { return true }
+                return false
+            },
+            set: { if !$0 { viewModel.dismissReflection() } }
+        )
+    }
+
+    private var crisisBinding: Binding<Bool> {
+        Binding(
+            get: { viewModel.captureState == .crisis },
+            set: { if !$0 { viewModel.dismissCrisis() } }
+        )
     }
 
     private var homeLayout: some View {
@@ -60,7 +103,7 @@ struct CaptureView: View {
 
             Spacer()
 
-            routingHint
+            captureHint
                 .padding(.horizontal, 24)
                 .padding(.bottom, 20)
 
@@ -80,7 +123,7 @@ struct CaptureView: View {
             Spacer()
 
             VStack(alignment: .leading, spacing: 8) {
-                Text("Say a folder name first")
+                Text("Your folders")
                     .font(.caption.weight(.semibold))
                     .foregroundStyle(NestTheme.secondaryText)
                     .padding(.horizontal, 24)
@@ -93,21 +136,15 @@ struct CaptureView: View {
         }
     }
 
-    /// Explains that the first spoken word routes the memo into a matching folder.
-    private var routingHint: some View {
+    private var captureHint: some View {
         VStack(spacing: 8) {
-            Text("Speak the folder name first")
+            Text("Speak freely")
                 .font(.subheadline.weight(.semibold))
                 .foregroundStyle(NestTheme.primaryText)
 
-            Text("Example: “Music, I left my heart in the chorus.”")
+            Text("Nest will listen, reflect, and help you find a gentle next step.")
                 .font(.footnote)
                 .foregroundStyle(NestTheme.secondaryText)
-                .multilineTextAlignment(.center)
-
-            Text("Nest saves it to that folder automatically.")
-                .font(.caption)
-                .foregroundStyle(NestTheme.secondaryText.opacity(0.9))
                 .multilineTextAlignment(.center)
         }
         .padding(.horizontal, 16)
@@ -127,7 +164,7 @@ struct CaptureView: View {
         VStack(spacing: 16) {
             ProgressView()
                 .tint(.white)
-            Text("Transcribing…")
+            Text("Reflecting on what you shared…")
                 .font(.subheadline)
                 .foregroundStyle(NestTheme.secondaryText)
         }
@@ -178,6 +215,6 @@ struct CaptureView: View {
 }
 
 #Preview {
-    CaptureView()
+    CaptureView(viewModel: CaptureViewModel())
         .modelContainer(for: [Thought.self, ThoughtFolder.self], inMemory: true)
 }

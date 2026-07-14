@@ -2,6 +2,12 @@ import SwiftUI
 
 /// Tools hub listing grounding and focus utilities.
 struct ToolsView: View {
+    @Binding var pendingTool: CopingTool?
+
+    init(pendingTool: Binding<CopingTool?> = .constant(nil)) {
+        _pendingTool = pendingTool
+    }
+
     var body: some View {
         NavigationStack {
             ZStack {
@@ -126,6 +132,23 @@ struct ToolsView: View {
                 }
             }
             .toolbar(.hidden, for: .navigationBar)
+            .navigationDestination(item: $pendingTool) { tool in
+                destination(for: tool)
+            }
+        }
+    }
+
+    @ViewBuilder
+    private func destination(for tool: CopingTool) -> some View {
+        switch tool {
+        case .guidedBreathing: BreathingToolView()
+        case .softUnwind: SoftUnwindToolView()
+        case .colorGrounding: ColorGroundingToolView()
+        case .ripplePond: RipplePondToolView()
+        case .focusBubble: FocusToolView()
+        case .worryBox: WorryBoxToolView()
+        case .bubbleDrift: BubbleDriftToolView()
+        case .kindNote: KindNoteToolView()
         }
     }
 

@@ -10,6 +10,11 @@ final class Thought {
     var createdAt: Date
     var audioFileName: String?
     var duration: TimeInterval
+    var reflection: String?
+    var stressor: String?
+    var emotion: String?
+    var recommendedToolRaw: String?
+    var isCrisis: Bool
 
     var folder: ThoughtFolder?
 
@@ -20,6 +25,11 @@ final class Thought {
         createdAt: Date = Date(),
         audioFileName: String? = nil,
         duration: TimeInterval = 0,
+        reflection: String? = nil,
+        stressor: String? = nil,
+        emotion: String? = nil,
+        recommendedToolRaw: String? = nil,
+        isCrisis: Bool = false,
         folder: ThoughtFolder? = nil
     ) {
         self.id = id
@@ -28,7 +38,24 @@ final class Thought {
         self.createdAt = createdAt
         self.audioFileName = audioFileName
         self.duration = duration
+        self.reflection = reflection
+        self.stressor = stressor
+        self.emotion = emotion
+        self.recommendedToolRaw = recommendedToolRaw
+        self.isCrisis = isCrisis
         self.folder = folder
+    }
+
+    /// Recommended coping tool from AI reflection, if available.
+    var recommendedTool: CopingTool? {
+        guard let recommendedToolRaw else { return nil }
+        return CopingTool(rawValue: recommendedToolRaw)
+    }
+
+    /// Whether a saved AI reflection exists.
+    var hasReflection: Bool {
+        if let reflection, !reflection.isEmpty { return true }
+        return false
     }
 
     /// Whether this thought has a saved voice memo.

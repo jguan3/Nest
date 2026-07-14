@@ -1,7 +1,7 @@
 import SwiftData
 import SwiftUI
 
-/// Voice memo card with playback, AI transcription, and delete.
+/// Voice memo card with playback, AI reflection, transcription, and folder reassignment.
 struct VoiceMemoCard: View {
     @Environment(\.modelContext) private var modelContext
     @Query(sort: \ThoughtFolder.sortOrder) private var folders: [ThoughtFolder]
@@ -16,6 +16,7 @@ struct VoiceMemoCard: View {
     @State private var transcriptionText = ""
     @State private var isTranscribing = false
     @State private var showDeleteConfirmation = false
+    @State private var showMoveToFolder = false
 
     var body: some View {
         VStack(alignment: .leading, spacing: 10) {
@@ -27,16 +28,35 @@ struct VoiceMemoCard: View {
                 Text(thought.createdAt.formatted(date: .omitted, time: .shortened))
                     .font(.subheadline)
                     .foregroundStyle(NestTheme.secondaryText)
-                Button {
-                    showDeleteConfirmation = true
+
+                Menu {
+                    Button("Move to…") { showMoveToFolder = true }
+                    Button("Delete", role: .destructive) { showDeleteConfirmation = true }
                 } label: {
-                    Image(systemName: "trash")
+                    Image(systemName: "ellipsis.circle")
                         .font(.subheadline)
-                        .foregroundStyle(.red.opacity(0.85))
+                        .foregroundStyle(NestTheme.secondaryText)
                         .frame(width: 32, height: 32)
                 }
                 .buttonStyle(.plain)
-                .accessibilityLabel("Delete voice memo")
+                .accessibilityLabel("Memo options")
+            }
+
+            if thought.hasReflection, let reflection = thought.reflection {
+                Text(reflection)
+                    .font(.body)
+                    .foregroundStyle(NestTheme.primaryText)
+                    .lineSpacing(4)
+                    .padding(14)
+                    .frame(maxWidth: .infinity, alignment: .leading)
+                    .background(
+                        RoundedRectangle(cornerRadius: 16, style: .continuous)
+                            .fill(NestTheme.cardBackground)
+                            .overlay(
+                                RoundedRectangle(cornerRadius: 16, style: .continuous)
+                                    .strokeBorder(NestTheme.cardStroke, lineWidth: 1)
+                            )
+                    )
             }
 
             HStack(spacing: 14) {
@@ -69,6 +89,12 @@ struct VoiceMemoCard: View {
                     )
             )
 
+            if let folderName = thought.folder?.name {
+                Text("In \(folderName)")
+                    .font(.caption)
+                    .foregroundStyle(NestTheme.secondaryText)
+            }
+
             Button {
                 toggleTranscription()
             } label: {
@@ -84,7 +110,7 @@ struct VoiceMemoCard: View {
                         HStack(spacing: 10) {
                             ProgressView()
                                 .tint(.white)
-                            Text("Transcribing with AI…")
+                            Text("Transcribing…")
                                 .font(.subheadline)
                                 .foregroundStyle(NestTheme.secondaryText)
                         }
@@ -105,6 +131,25 @@ struct VoiceMemoCard: View {
         } message: {
             Text("This removes the recording and transcription permanently.")
         }
+        .confirmationDialog("Move to folder", isPresented: $showMoveToFolder, titleVisibility: .visible) {
+            ForEach(folders) { folder in
+                Button(folder.name) {
+                    moveThought(to: folder)
+                }
+            }
+            Button("Cancel", role: .cancel) {}
+        }
+    }
+
+    private func moveThought(to folder: ThoughtFolder) {
+        if let currentFolder = thought.folder, currentFolder.id != folder.id {
+            currentFolder.thoughts.removeAll { $0.id == thought.id }
+        }
+        thought.folder = folder
+        if !folder.thoughts.contains(where: { $0.id == thought.id }) {
+            folder.thoughts.append(thought)
+        }
+        try? modelContext.save()
     }
 
     private func toggleTranscription() {

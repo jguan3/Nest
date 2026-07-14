@@ -1,30 +1,51 @@
 import Foundation
 import SwiftData
 
-/// Inserts default folders on first launch.
+/// Inserts default folders on first launch and runs one-time migrations.
 enum SeedData {
-    /// Creates Music and Inbox folders if none exist.
-    /// - Parameter context: The SwiftData model context.
+    private static let musicMigrationKey = "nest.migration.musicFolderRemoved"
+
+    /// Creates Inbox on first launch and migrates the legacy Music seed folder.
     static func insertDefaultsIfNeeded(in context: ModelContext) {
-        let descriptor = FetchDescriptor<ThoughtFolder>()
-        let existingCount = (try? context.fetchCount(descriptor)) ?? 0
-        guard existingCount == 0 else { return }
+        var folders = (try? context.fetch(FetchDescriptor<ThoughtFolder>())) ?? []
 
-        let music = ThoughtFolder(
-            name: "Music",
-            keyword: "music",
-            colorName: FolderColor.purple.rawValue,
-            sortOrder: 0
-        )
-        let inbox = ThoughtFolder(
-            name: "Inbox",
-            keyword: "",
-            colorName: FolderColor.gray.rawValue,
-            sortOrder: 1
-        )
+        if folders.isEmpty {
+            let inbox = ThoughtFolder(
+                name: "Inbox",
+                keyword: "",
+                colorName: FolderColor.gray.rawValue,
+                sortOrder: 0
+            )
+            context.insert(inbox)
+            try? context.save()
+            folders = (try? context.fetch(FetchDescriptor<ThoughtFolder>())) ?? []
+        }
 
-        context.insert(music)
-        context.insert(inbox)
+        migrateLegacyMusicFolderIfNeeded(in: context, folders: folders)
+    }
+
+    /// Removes the seeded Music placeholder and moves its thoughts to Inbox.
+    private static func migrateLegacyMusicFolderIfNeeded(
+        in context: ModelContext,
+        folders: [ThoughtFolder]
+    ) {
+        guard !UserDefaults.standard.bool(forKey: musicMigrationKey) else { return }
+
+        guard let musicFolder = folders.first(where: {
+            $0.name == "Music" && $0.keyword == "music"
+        }) else {
+            UserDefaults.standard.set(true, forKey: musicMigrationKey)
+            return
+        }
+
+        let inbox = folders.first(where: \.isInbox)
+        for thought in musicFolder.thoughts {
+            thought.folder = inbox
+            inbox?.thoughts.append(thought)
+        }
+
+        context.delete(musicFolder)
         try? context.save()
+        UserDefaults.standard.set(true, forKey: musicMigrationKey)
     }
 }

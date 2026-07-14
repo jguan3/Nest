@@ -8,11 +8,13 @@ enum CaptureState: Equatable {
     case idle
     case listening
     case processing
+    case reflecting(ReflectionAnalysis)
+    case crisis
     case saved
     case error
 }
 
-/// Coordinates speech capture, keyword routing, and persistence.
+/// Coordinates speech capture, AI reflection, and persistence.
 @MainActor
 final class CaptureViewModel: ObservableObject {
     @Published private(set) var captureState: CaptureState = .idle
@@ -24,9 +26,15 @@ final class CaptureViewModel: ObservableObject {
     @Published private(set) var savedFolderColorName: String?
     @Published private(set) var errorMessage: String?
     @Published var folderToOpen: ThoughtFolder?
+    @Published var pendingToolNavigation: CopingTool?
 
     private let speechService = SpeechRecognitionService()
+    private let reflectionService: ReflectionAnalysisService
     private var observationTask: Task<Void, Never>?
+
+    init(reflectionService: ReflectionAnalysisService = ReflectionAnalysisService()) {
+        self.reflectionService = reflectionService
+    }
 
     /// Begins a new voice capture session.
     func startRecording() async {
@@ -51,7 +59,7 @@ final class CaptureViewModel: ObservableObject {
         }
     }
 
-    /// Ends capture and saves the routed thought with voice memo.
+    /// Ends capture, analyzes the transcript, and saves the thought with reflection.
     func stopRecording(folders: [ThoughtFolder], modelContext: ModelContext) async {
         guard captureState == .listening else { return }
 
@@ -70,39 +78,77 @@ final class CaptureViewModel: ObservableObject {
             return
         }
 
-        let route = FolderRouter.route(transcript: result.transcript, folders: folders)
+        let transcript = result.transcript.trimmingCharacters(in: .whitespacesAndNewlines)
+        let analysis: ReflectionAnalysis
+
+        do {
+            analysis = try await reflectionService.analyze(
+                transcript: transcript,
+                availableFolders: folders
+            )
+        } catch {
+            analysis = ReflectionAnalysisService.fallback()
+        }
+
+        let destinationFolder = FolderSuggestionResolver.resolve(
+            suggestedFolder: analysis.suggestedFolder,
+            folders: folders
+        )
+
         let displayText: String
-        if route.cleanedText.isEmpty {
-            displayText = result.audioFileName != nil ? "Voice memo" : route.folder.name
+        if transcript.isEmpty {
+            displayText = result.audioFileName != nil ? "Voice memo" : destinationFolder.name
         } else {
-            displayText = route.cleanedText
+            displayText = transcript
         }
 
         let thought = Thought(
             text: displayText,
-            fullTranscript: result.transcript.isEmpty ? nil : result.transcript,
+            fullTranscript: transcript.isEmpty ? nil : transcript,
             audioFileName: result.audioFileName,
             duration: result.duration,
-            folder: route.folder
+            reflection: analysis.crisis ? nil : analysis.reflection,
+            stressor: analysis.crisis ? nil : analysis.stressor,
+            emotion: analysis.crisis ? nil : analysis.emotion,
+            recommendedToolRaw: analysis.crisis ? nil : analysis.recommendedTool.rawValue,
+            isCrisis: analysis.crisis,
+            folder: destinationFolder
         )
-        route.folder.thoughts.append(thought)
+        destinationFolder.thoughts.append(thought)
         modelContext.insert(thought)
 
         do {
             try modelContext.save()
-            UserDefaults.standard.set(route.folder.name, forKey: "lastUsedFolderName")
-            savedFolderName = route.folder.name
-            savedFolderColorName = route.folder.colorName
-            folderToOpen = route.folder
-            captureState = .idle
+            UserDefaults.standard.set(destinationFolder.name, forKey: "lastUsedFolderName")
+            savedFolderName = destinationFolder.name
+            savedFolderColorName = destinationFolder.colorName
             partialTranscript = ""
 
-            let generator = UIImpactFeedbackGenerator(style: .medium)
-            generator.impactOccurred()
+            if analysis.crisis {
+                captureState = .crisis
+            } else {
+                captureState = .reflecting(analysis)
+                let generator = UIImpactFeedbackGenerator(style: .medium)
+                generator.impactOccurred()
+            }
+
         } catch {
             captureState = .error
             errorMessage = "Could not save your thought."
         }
+    }
+
+    func dismissReflection() {
+        captureState = .idle
+    }
+
+    func dismissCrisis() {
+        captureState = .idle
+    }
+
+    func requestToolNavigation(_ tool: CopingTool) {
+        pendingToolNavigation = tool
+        captureState = .idle
     }
 
     private func beginObservingSpeechService() {
