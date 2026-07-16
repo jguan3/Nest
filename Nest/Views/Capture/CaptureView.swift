@@ -1,19 +1,20 @@
 import SwiftData
 import SwiftUI
 
-/// Primary capture screen — opens directly on launch for low friction.
+/// Primary capture screen — voice or optional text into conversational reflection.
 struct CaptureView: View {
     @Environment(\.modelContext) private var modelContext
     @Query(sort: \ThoughtFolder.sortOrder) private var folders: [ThoughtFolder]
     @ObservedObject var viewModel: CaptureViewModel
     @State private var isLibraryPresented = false
+    @FocusState private var isTextFieldFocused: Bool
 
     private var isRecording: Bool {
         viewModel.captureState == .listening
     }
 
     private var isProcessing: Bool {
-        viewModel.captureState == .processing
+        viewModel.isProcessing
     }
 
     var body: some View {
@@ -31,7 +32,7 @@ struct CaptureView: View {
             }
             .toolbar(.hidden, for: .navigationBar)
             .sheet(isPresented: $isLibraryPresented) {
-                LibraryView()
+                VoiceNotesHistoryView()
             }
             .sheet(isPresented: Binding(
                 get: { viewModel.folderToOpen != nil },
@@ -52,31 +53,63 @@ struct CaptureView: View {
                 }
             }
             .fullScreenCover(isPresented: reflectingBinding) {
-                if case .reflecting(let analysis) = viewModel.captureState {
+                if case .reflecting(let conversation) = viewModel.captureState {
                     ReflectionResultView(
-                        analysis: analysis,
+                        conversation: conversation,
                         savedFolderName: viewModel.savedFolderName,
                         savedFolderColorName: viewModel.savedFolderColorName,
-                        onKeepSharing: {
-                            viewModel.dismissReflection()
-                            Task { await viewModel.startRecording() }
+                        onContinueReflecting: {
+                            viewModel.beginContinueReflecting()
                         },
-                        onTakeAMoment: { viewModel.requestToolNavigation(analysis.recommendedTool) },
-                        onDoneForNow: { viewModel.dismissReflection() }
+                        onDoneForNow: {
+                            Task { await viewModel.finishReflecting() }
+                        },
+                        onSelectActivity: { tool in
+                            viewModel.requestToolNavigation(tool)
+                        },
+                        onDismissClosing: {
+                            viewModel.dismissReflection()
+                        }
                     )
                 }
             }
             .fullScreenCover(isPresented: crisisBinding) {
+                crisisSupportCover
+            }
+            .onAppear {
+                viewModel.refreshChatClient()
+            }
+        }
+        .preferredColorScheme(.dark)
+        .animation(.spring(response: 0.4, dampingFraction: 0.85), value: isRecording)
+        .toolbar(isRecording || isProcessing ? .hidden : .visible, for: .tabBar)
+    }
+
+    /// Chooses self-harm or harm-to-others support UI from the active crisis kind.
+    @ViewBuilder
+    private var crisisSupportCover: some View {
+        if case .crisis(let kind) = viewModel.captureState {
+            switch kind {
+            case .harmToOthers:
+                HarmToOthersSupportView(
+                    savedFolderName: viewModel.savedFolderName,
+                    savedFolderColorName: viewModel.savedFolderColorName,
+                    onDismiss: { viewModel.dismissCrisis() }
+                )
+            case .selfHarm, .none:
                 CrisisSupportView(
                     savedFolderName: viewModel.savedFolderName,
                     savedFolderColorName: viewModel.savedFolderColorName,
                     onDismiss: { viewModel.dismissCrisis() }
                 )
             }
+        } else {
+            CrisisSupportView(
+                savedFolderName: viewModel.savedFolderName,
+                savedFolderColorName: viewModel.savedFolderColorName,
+                onDismiss: { viewModel.dismissCrisis() }
+            )
         }
-        .preferredColorScheme(.dark)
-        .animation(.spring(response: 0.4, dampingFraction: 0.85), value: isRecording)
-        .toolbar(isRecording || isProcessing ? .hidden : .visible, for: .tabBar)
     }
 
     private var reflectingBinding: Binding<Bool> {
@@ -85,13 +118,22 @@ struct CaptureView: View {
                 if case .reflecting = viewModel.captureState { return true }
                 return false
             },
-            set: { if !$0 { viewModel.dismissReflection() } }
+            set: { isPresented in
+                // Avoid wiping the session when state briefly leaves `.reflecting`
+                // for voice continue / processing.
+                if !isPresented, case .reflecting = viewModel.captureState {
+                    viewModel.dismissReflection()
+                }
+            }
         )
     }
 
     private var crisisBinding: Binding<Bool> {
         Binding(
-            get: { viewModel.captureState == .crisis },
+            get: {
+                if case .crisis = viewModel.captureState { return true }
+                return false
+            },
             set: { if !$0 { viewModel.dismissCrisis() } }
         )
     }
@@ -102,15 +144,28 @@ struct CaptureView: View {
                 .padding(.top, 8)
 
             Spacer()
+                .contentShape(Rectangle())
+                .onTapGesture {
+                    isTextFieldFocused = false
+                }
 
             captureHint
                 .padding(.horizontal, 24)
                 .padding(.bottom, 20)
 
             EmptyThoughtsButton(isDisabled: false) {
-                Task { await viewModel.startRecording() }
+                isTextFieldFocused = false
+                if viewModel.isContinueReflecting {
+                    Task { await viewModel.startContinueRecording() }
+                } else {
+                    Task { await viewModel.startRecording() }
+                }
             }
             .padding(.horizontal, 24)
+
+            textComposer
+                .padding(.horizontal, 24)
+                .padding(.top, 16)
 
             if let error = viewModel.errorMessage, viewModel.captureState == .error {
                 Text(error)
@@ -121,6 +176,10 @@ struct CaptureView: View {
             }
 
             Spacer()
+                .contentShape(Rectangle())
+                .onTapGesture {
+                    isTextFieldFocused = false
+                }
 
             VStack(alignment: .leading, spacing: 8) {
                 Text("Your folders")
@@ -129,6 +188,7 @@ struct CaptureView: View {
                     .padding(.horizontal, 24)
 
                 FolderChipRow(folders: folders) { folder in
+                    isTextFieldFocused = false
                     viewModel.folderToOpen = folder
                 }
             }
@@ -136,13 +196,57 @@ struct CaptureView: View {
         }
     }
 
+    private var textComposer: some View {
+        HStack(spacing: 10) {
+            TextField("Or type what's on your mind…", text: $viewModel.draftText, axis: .vertical)
+                .textFieldStyle(.plain)
+                .padding(14)
+                .foregroundStyle(NestTheme.primaryText)
+                .background(
+                    RoundedRectangle(cornerRadius: 16, style: .continuous)
+                        .fill(NestTheme.cardBackground)
+                        .overlay(
+                            RoundedRectangle(cornerRadius: 16, style: .continuous)
+                                .strokeBorder(NestTheme.cardStroke, lineWidth: 1)
+                        )
+                )
+                .lineLimit(1...4)
+                .focused($isTextFieldFocused)
+                .submitLabel(.done)
+                .onSubmit {
+                    isTextFieldFocused = false
+                }
+
+            Button {
+                isTextFieldFocused = false
+                Task {
+                    await viewModel.submitText(folders: folders, modelContext: modelContext)
+                }
+            } label: {
+                Image(systemName: "arrow.up.circle.fill")
+                    .font(.system(size: 34))
+                    .foregroundStyle(
+                        viewModel.draftText.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
+                            ? NestTheme.secondaryText.opacity(0.5)
+                            : NestTheme.primaryText
+                    )
+            }
+            .disabled(viewModel.draftText.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty)
+            .accessibilityLabel("Send typed reflection")
+        }
+    }
+
     private var captureHint: some View {
         VStack(spacing: 8) {
-            Text("Speak freely")
+            Text(viewModel.isContinueReflecting ? "Share a little more" : "Share freely")
                 .font(.subheadline.weight(.semibold))
                 .foregroundStyle(NestTheme.primaryText)
 
-            Text("Nest will listen, reflect, and help you find a gentle next step.")
+            Text(
+                viewModel.isContinueReflecting
+                    ? "Speak or type — Nest will only see the words, not how you shared them."
+                    : "Speak or type. Nest will reflect with you and offer a gentle next step when you're ready."
+            )
                 .font(.footnote)
                 .foregroundStyle(NestTheme.secondaryText)
                 .multilineTextAlignment(.center)
@@ -164,9 +268,21 @@ struct CaptureView: View {
         VStack(spacing: 16) {
             ProgressView()
                 .tint(.white)
-            Text("Reflecting on what you shared…")
+            Text(processingMessage)
                 .font(.subheadline)
                 .foregroundStyle(NestTheme.secondaryText)
+        }
+    }
+
+    private var processingMessage: String {
+        guard case .processing(let purpose) = viewModel.captureState else {
+            return "Reflecting on what you shared…"
+        }
+        switch purpose {
+        case .reflection:
+            return "Reflecting on what you shared…"
+        case .calmingExercise:
+            return "Preparing your calming exercise…"
         }
     }
 
@@ -194,7 +310,7 @@ struct CaptureView: View {
                             .overlay(Circle().strokeBorder(NestTheme.cardStroke, lineWidth: 1))
                     )
             }
-            .accessibilityLabel("Open library")
+            .accessibilityLabel("Open History")
         }
         .padding(.horizontal, 24)
     }

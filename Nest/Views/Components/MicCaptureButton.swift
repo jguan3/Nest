@@ -46,11 +46,16 @@ struct MicCaptureButton: View {
             }
         }
         .buttonStyle(.plain)
-        .disabled(state == .processing)
+        .disabled(isProcessing)
         .onAppear { isPulsing = state == .listening }
         .onChange(of: state) { _, newState in
             isPulsing = newState == .listening
         }
+    }
+
+    private var isProcessing: Bool {
+        if case .processing = state { return true }
+        return false
     }
 
     private var buttonGradient: LinearGradient {

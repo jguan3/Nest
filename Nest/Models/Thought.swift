@@ -15,6 +15,10 @@ final class Thought {
     var emotion: String?
     var recommendedToolRaw: String?
     var isCrisis: Bool
+    /// Short history title generated once at save time (user-editable later).
+    var title: String = ""
+    /// One-line history preview generated once at save time.
+    var preview: String = ""
 
     var folder: ThoughtFolder?
 
@@ -30,6 +34,8 @@ final class Thought {
         emotion: String? = nil,
         recommendedToolRaw: String? = nil,
         isCrisis: Bool = false,
+        title: String = "",
+        preview: String = "",
         folder: ThoughtFolder? = nil
     ) {
         self.id = id
@@ -43,7 +49,19 @@ final class Thought {
         self.emotion = emotion
         self.recommendedToolRaw = recommendedToolRaw
         self.isCrisis = isCrisis
+        self.title = title
+        self.preview = preview
         self.folder = folder
+    }
+
+    /// Title shown in Voice Notes history, with fallback for legacy notes.
+    var displayTitle: String {
+        VoiceNoteSummaryHelper.displayTitle(for: self)
+    }
+
+    /// Preview shown in Voice Notes history, with fallback for legacy notes.
+    var displayPreview: String {
+        VoiceNoteSummaryHelper.displayPreview(for: self)
     }
 
     /// Recommended coping tool from AI reflection, if available.

@@ -22,6 +22,7 @@ enum SeedData {
         }
 
         migrateLegacyMusicFolderIfNeeded(in: context, folders: folders)
+        MoodStore.migrateLegacyUserDefaultsIfNeeded(in: context)
     }
 
     /// Removes the seeded Music placeholder and moves its thoughts to Inbox.

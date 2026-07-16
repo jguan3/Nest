@@ -7,7 +7,7 @@ struct NestApp: App {
         WindowGroup {
             MainTabView()
         }
-        .modelContainer(for: [Thought.self, ThoughtFolder.self]) { result in
+        .modelContainer(for: [Thought.self, ThoughtFolder.self, MoodEntry.self]) { result in
             if case .success(let container) = result {
                 SeedData.insertDefaultsIfNeeded(in: container.mainContext)
             }

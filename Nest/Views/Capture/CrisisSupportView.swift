@@ -1,6 +1,9 @@
 import SwiftUI
 
 /// Supportive crisis resources shown when self-harm language is detected.
+///
+/// For violent intent toward others, use `HarmToOthersSupportView` instead —
+/// that path should not route users to the suicide prevention hotline.
 struct CrisisSupportView: View {
     let savedFolderName: String?
     let savedFolderColorName: String?

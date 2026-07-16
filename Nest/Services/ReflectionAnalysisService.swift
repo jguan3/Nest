@@ -4,8 +4,12 @@ import Foundation
 struct ReflectionAnalysisService {
     let llmClient: any LLMClient
 
-    init(llmClient: any LLMClient = MockLLMClient()) {
-        self.llmClient = llmClient
+    /// Creates an analysis service backed by the given LLM client.
+    /// - Parameter llmClient: Client used for transcript analysis; defaults to `MockLLMClient`.
+    init(llmClient: (any LLMClient)? = nil) {
+        // Build the default client in the initializer body (not a default argument)
+        // so MainActor isolation stays safe under Swift 6 / default actor isolation.
+        self.llmClient = llmClient ?? MockLLMClient()
     }
 
     func analyze(transcript: String, availableFolders: [ThoughtFolder]) async throws -> ReflectionAnalysis {
@@ -28,7 +32,7 @@ struct ReflectionAnalysisService {
             emotion: "unknown",
             recommendedTool: .guidedBreathing,
             suggestedFolder: nil,
-            crisis: false
+            crisisKind: .none
         )
     }
 }

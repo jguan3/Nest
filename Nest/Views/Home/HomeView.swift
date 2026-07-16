@@ -1,10 +1,10 @@
+import SwiftData
 import SwiftUI
 
 /// Home tab with a living nest bird, affirmations, and a gentle mood check-in.
 struct HomeView: View {
     @State private var affirmation = AffirmationStore.random()
     @State private var nestPulse = false
-    @State private var selectedMood: MoodOption? = MoodStore.todayMood()
     @AppStorage("nest.home.checkInCount") private var checkInCount = 0
 
     var body: some View {
@@ -55,7 +55,7 @@ struct HomeView: View {
                     .buttonStyle(.plain)
                     .accessibilityLabel("Show another affirmation")
 
-                    MoodCheckInCard(selectedMood: $selectedMood) {
+                    MoodCheckInCard {
                         checkInCount += 1
                     }
                     .padding(.horizontal, 20)
@@ -66,7 +66,7 @@ struct HomeView: View {
     }
 }
 
-/// Interactive nest scene with a bird that walks along the nest.
+/// Interactive scene with a cozy woven nest and a peach bird that walks along it.
 private struct NestScene: View {
     let isPulsing: Bool
 
@@ -77,6 +77,7 @@ private struct NestScene: View {
     @State private var isDragging = false
     @State private var dragOriginX: CGFloat = 0
     @State private var walkTask: Task<Void, Never>?
+    @State private var nestBreath = false
 
     private let walkMinX: CGFloat = -78
     private let walkMaxX: CGFloat = 78
@@ -84,7 +85,7 @@ private struct NestScene: View {
 
     var body: some View {
         ZStack {
-            NestBowl(isPulsing: isPulsing)
+            CozyNestIllustration(isPulsing: isPulsing, isBreathing: nestBreath)
 
             walkingBird
                 .offset(x: birdX, y: birdY)
@@ -92,8 +93,15 @@ private struct NestScene: View {
 
             NestLeafAccent()
         }
+        // Subtle float on the whole scene so the peach bird stays seated in the nest.
+        .offset(y: nestBreath ? -3.5 : 0)
         .animation(.easeInOut(duration: 0.4), value: isPulsing)
-        .onAppear { restartWalking() }
+        .onAppear {
+            withAnimation(.easeInOut(duration: 2.6).repeatForever(autoreverses: true)) {
+                nestBreath = true
+            }
+            restartWalking()
+        }
         .onDisappear {
             walkTask?.cancel()
             walkTask = nil
@@ -174,17 +182,25 @@ private struct NestScene: View {
     }
 }
 
-/// Nest bowl and twigs behind the bird.
-private struct NestBowl: View {
+/// Soft, woven nest bowl with warm browns and gentle shading.
+private struct CozyNestIllustration: View {
     let isPulsing: Bool
+    let isBreathing: Bool
+
+    private let outerTwig = Color(red: 0.52, green: 0.36, blue: 0.24)
+    private let midTwig = Color(red: 0.66, green: 0.47, blue: 0.31)
+    private let lightTwig = Color(red: 0.78, green: 0.60, blue: 0.42)
+    private let softTwig = Color(red: 0.86, green: 0.70, blue: 0.52)
+    private let hollow = Color(red: 0.34, green: 0.24, blue: 0.16)
 
     var body: some View {
         ZStack {
+            // Soft ambient glow that ties into the app palette.
             Ellipse()
                 .fill(
                     RadialGradient(
                         colors: [
-                            Color(red: 0.85, green: 0.65, blue: 1.0).opacity(0.22),
+                            Color(red: 0.85, green: 0.65, blue: 1.0).opacity(0.20),
                             Color.clear
                         ],
                         center: .center,
@@ -195,48 +211,143 @@ private struct NestBowl: View {
                 .frame(width: 220, height: 70)
                 .offset(y: 58)
 
+            // Nest shadow / seated hollow.
+            Ellipse()
+                .fill(
+                    RadialGradient(
+                        colors: [
+                            hollow.opacity(0.50),
+                            hollow.opacity(0.22),
+                            Color.clear
+                        ],
+                        center: .center,
+                        startRadius: 6,
+                        endRadius: 100
+                    )
+                )
+                .frame(width: 206, height: 70)
+                .offset(y: 58)
+
+            // Soft inner bedding.
+            Ellipse()
+                .fill(
+                    LinearGradient(
+                        colors: [
+                            softTwig.opacity(0.55),
+                            midTwig.opacity(0.40),
+                            hollow.opacity(0.35)
+                        ],
+                        startPoint: .top,
+                        endPoint: .bottom
+                    )
+                )
+                .frame(width: 176, height: 58)
+                .offset(y: 56)
+
+            // Outer bowl rim.
             Ellipse()
                 .stroke(
                     LinearGradient(
-                        colors: [
-                            Color(red: 0.72, green: 0.55, blue: 1.0).opacity(0.65),
-                            Color(red: 0.45, green: 0.55, blue: 1.0).opacity(0.4)
-                        ],
+                        colors: [outerTwig, midTwig, outerTwig.opacity(0.88)],
+                        startPoint: .leading,
+                        endPoint: .trailing
+                    ),
+                    style: StrokeStyle(lineWidth: 24, lineCap: .round)
+                )
+                .frame(width: 268, height: 116)
+                .offset(y: 54)
+
+            // Mid woven rim.
+            Ellipse()
+                .stroke(
+                    LinearGradient(
+                        colors: [lightTwig.opacity(0.85), midTwig, lightTwig.opacity(0.7)],
                         startPoint: .topLeading,
                         endPoint: .bottomTrailing
                     ),
-                    style: StrokeStyle(lineWidth: 16, lineCap: .round)
+                    style: StrokeStyle(lineWidth: 12, lineCap: .round)
                 )
-                .frame(width: 280, height: 128)
-                .offset(y: 52)
-                .scaleEffect(isPulsing ? 1.03 : 1.0)
+                .frame(width: 238, height: 96)
+                .offset(y: 56)
 
+            // Soft highlight ring.
             Ellipse()
-                .stroke(Color.white.opacity(0.22), lineWidth: 5)
-                .frame(width: 218, height: 87)
-                .offset(y: 60)
+                .stroke(softTwig.opacity(0.45), lineWidth: 5)
+                .frame(width: 208, height: 80)
+                .offset(y: 57)
 
-            ForEach(0..<8, id: \.self) { index in
+            // Inner scoop edge.
+            Ellipse()
+                .stroke(outerTwig.opacity(0.55), lineWidth: 5)
+                .frame(width: 186, height: 68)
+                .offset(y: 58)
+
+            ForEach(0..<18, id: \.self) { index in
                 NestTwig(index: index)
             }
+
+            NestRimStick(length: 52, thickness: 4.5, rotation: -26, xOffset: -116, yOffset: 44, color: midTwig)
+            NestRimStick(length: 46, thickness: 4, rotation: 30, xOffset: 114, yOffset: 42, color: lightTwig)
+            NestRimStick(length: 40, thickness: 3.5, rotation: -10, xOffset: -94, yOffset: 78, color: outerTwig)
+            NestRimStick(length: 44, thickness: 3.5, rotation: 14, xOffset: 96, yOffset: 80, color: midTwig)
+            NestRimStick(length: 34, thickness: 3, rotation: 58, xOffset: -68, yOffset: 92, color: softTwig.opacity(0.9))
+            NestRimStick(length: 32, thickness: 3, rotation: -54, xOffset: 70, yOffset: 94, color: outerTwig.opacity(0.9))
         }
+        .scaleEffect((isPulsing ? 1.03 : 1.0) * (isBreathing ? 1.016 : 1.0))
     }
 }
 
-/// One twig mark inside the nest bowl.
+/// One woven twig curved through the nest bowl.
 private struct NestTwig: View {
     let index: Int
 
+    private var twigColor: Color {
+        let palette = [
+            Color(red: 0.52, green: 0.36, blue: 0.22),
+            Color(red: 0.66, green: 0.46, blue: 0.28),
+            Color(red: 0.74, green: 0.56, blue: 0.36),
+            Color(red: 0.48, green: 0.32, blue: 0.18),
+            Color(red: 0.80, green: 0.64, blue: 0.46)
+        ]
+        return palette[index % palette.count]
+    }
+
     var body: some View {
-        let width = 24 + CGFloat(index % 4) * 8
-        let opacity = 0.12 + Double(index % 3) * 0.04
-        let rotation = Double(index) * 12 - 42
-        let xOffset = CGFloat(index) * 26 - 91
-        let yOffset = 40 + CGFloat(abs(index - 3)) * 5
+        let width = 32 + CGFloat(index % 5) * 9
+        let thickness = 2.4 + CGFloat(index % 3) * 0.7
+        let opacity = 0.50 + Double(index % 4) * 0.1
+        let rotation = Double(index) * 17 - 80
+        let xOffset = cos(Double(index) * 0.55) * 92
+        let yOffset = 50 + sin(Double(index) * 0.7) * 20 + CGFloat(index % 3) * 2.5
 
         Capsule()
-            .fill(Color.white.opacity(opacity))
-            .frame(width: width, height: 5)
+            .fill(twigColor.opacity(opacity))
+            .frame(width: width, height: thickness)
+            .rotationEffect(.degrees(rotation))
+            .offset(x: xOffset, y: yOffset)
+    }
+}
+
+/// A short protruding stick on the nest rim.
+/// - Parameters:
+///   - length: Stick length in points.
+///   - thickness: Stick thickness in points.
+///   - rotation: Degrees to rotate the stick.
+///   - xOffset: Horizontal placement relative to nest center.
+///   - yOffset: Vertical placement relative to nest center.
+///   - color: Fill color for the stick.
+private struct NestRimStick: View {
+    let length: CGFloat
+    let thickness: CGFloat
+    let rotation: Double
+    let xOffset: CGFloat
+    let yOffset: CGFloat
+    let color: Color
+
+    var body: some View {
+        Capsule()
+            .fill(color)
+            .frame(width: length, height: thickness)
             .rotationEffect(.degrees(rotation))
             .offset(x: xOffset, y: yOffset)
     }
@@ -368,78 +479,21 @@ private struct NestBirdBeak: Shape {
     }
 }
 
-/// Mood choices for a low-friction daily check-in.
-enum MoodOption: String, CaseIterable, Identifiable {
-    case calm
-    case okay
-    case tired
-    case anxious
-    case heavy
-
-    var id: String { rawValue }
-
-    var label: String {
-        switch self {
-        case .calm: "Calm"
-        case .okay: "Okay"
-        case .tired: "Tired"
-        case .anxious: "Anxious"
-        case .heavy: "Heavy"
-        }
-    }
-
-    var symbol: String {
-        switch self {
-        case .calm: "sun.max.fill"
-        case .okay: "cloud.sun.fill"
-        case .tired: "moon.fill"
-        case .anxious: "cloud.bolt.fill"
-        case .heavy: "cloud.rain.fill"
-        }
-    }
-
-    var response: String {
-        switch self {
-        case .calm: "Nice. Let that softness stay a little longer."
-        case .okay: "Okay is a valid place to be."
-        case .tired: "Rest counts. You don’t have to earn it."
-        case .anxious: "You’re safe enough to take one slower breath."
-        case .heavy: "Heavy feelings still belong here."
-        }
-    }
-}
-
-/// Persists today’s mood with UserDefaults.
-enum MoodStore {
-    private static let moodKey = "nest.mood.today.value"
-    private static let dateKey = "nest.mood.today.date"
-
-    /// Returns today’s saved mood, if any.
-    static func todayMood() -> MoodOption? {
-        let formatter = DateFormatter()
-        formatter.dateFormat = "yyyy-MM-dd"
-        let today = formatter.string(from: Date())
-        guard UserDefaults.standard.string(forKey: dateKey) == today,
-              let raw = UserDefaults.standard.string(forKey: moodKey),
-              let mood = MoodOption(rawValue: raw) else {
-            return nil
-        }
-        return mood
-    }
-
-    /// Saves a mood for today.
-    static func save(_ mood: MoodOption) {
-        let formatter = DateFormatter()
-        formatter.dateFormat = "yyyy-MM-dd"
-        UserDefaults.standard.set(formatter.string(from: Date()), forKey: dateKey)
-        UserDefaults.standard.set(mood.rawValue, forKey: moodKey)
-    }
-}
-
-/// Soft mood selector card for the Home screen.
+/// Soft mood selector card for the Home screen; each tap appends a timed entry.
 private struct MoodCheckInCard: View {
-    @Binding var selectedMood: MoodOption?
     let onCheckedIn: () -> Void
+
+    @Environment(\.modelContext) private var modelContext
+    @Query(sort: \MoodEntry.createdAt, order: .reverse) private var moodEntries: [MoodEntry]
+    @State private var selectedMood: MoodOption?
+
+    private var todaysEntries: [MoodEntry] {
+        MoodStore.todaysEntries(from: moodEntries)
+    }
+
+    private var latestToday: MoodOption? {
+        MoodStore.latestToday(from: moodEntries)
+    }
 
     var body: some View {
         VStack(alignment: .leading, spacing: 14) {
@@ -453,38 +507,42 @@ private struct MoodCheckInCard: View {
                         withAnimation(.spring(response: 0.3, dampingFraction: 0.8)) {
                             selectedMood = mood
                         }
-                        MoodStore.save(mood)
+                        MoodStore.insert(mood, in: modelContext)
                         onCheckedIn()
                     } label: {
                         VStack(spacing: 6) {
-                            Image(systemName: mood.symbol)
-                                .font(.body)
+                            MoodSymbolView(mood: mood, font: .body)
                             Text(mood.label)
                                 .font(.caption2.weight(.semibold))
                         }
                         .foregroundStyle(
-                            selectedMood == mood ? Color.white : NestTheme.secondaryText
+                            highlightedMood == mood ? Color.white : NestTheme.secondaryText
                         )
                         .frame(maxWidth: .infinity)
                         .padding(.vertical, 12)
                         .background(
                             RoundedRectangle(cornerRadius: 14, style: .continuous)
                                 .fill(
-                                    selectedMood == mood
+                                    highlightedMood == mood
                                         ? Color.white.opacity(0.18)
                                         : Color.white.opacity(0.06)
                                 )
                         )
                     }
                     .buttonStyle(.plain)
+                    .accessibilityLabel("Check in as \(mood.label)")
                 }
             }
 
-            if let selectedMood {
-                Text(selectedMood.response)
+            if let highlightedMood {
+                Text(highlightedMood.response)
                     .font(.footnote)
                     .foregroundStyle(NestTheme.secondaryText)
                     .transition(.opacity.combined(with: .move(edge: .bottom)))
+            }
+
+            if !todaysEntries.isEmpty {
+                todaySoFarSection
             }
         }
         .padding(18)
@@ -496,9 +554,39 @@ private struct MoodCheckInCard: View {
                         .strokeBorder(NestTheme.cardStroke, lineWidth: 1)
                 )
         )
+        .onAppear {
+            if selectedMood == nil {
+                selectedMood = latestToday
+            }
+        }
+        .onChange(of: latestToday) { _, newValue in
+            if selectedMood == nil {
+                selectedMood = newValue
+            }
+        }
+    }
+
+    /// Mood shown as selected: local tap override, otherwise latest today.
+    private var highlightedMood: MoodOption? {
+        selectedMood ?? latestToday
+    }
+
+    private var todaySoFarSection: some View {
+        VStack(alignment: .leading, spacing: 10) {
+            Text("Today so far")
+                .font(.subheadline.weight(.semibold))
+                .foregroundStyle(NestTheme.secondaryText)
+
+            // Newest 3 by default; expand to see the rest of today’s check-ins.
+            MoodEntryDayList(entries: todaysEntries, density: .compact)
+        }
+        .padding(.top, 4)
+        .accessibilityElement(children: .contain)
+        .accessibilityLabel("Today’s mood check-ins")
     }
 }
 
 #Preview {
     HomeView()
+        .modelContainer(for: MoodEntry.self, inMemory: true)
 }

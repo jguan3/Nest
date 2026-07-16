@@ -11,6 +11,34 @@ struct ReflectionAnalysisParsingTests {
         )
 
         #expect(analysis.crisis == true)
+        #expect(analysis.crisisKind == .selfHarm)
+    }
+
+    @Test func mockClientReturnsHarmToOthersWithoutSelfHarmHotlineCopy() async throws {
+        let client = MockLLMClient(simulatedDelay: .milliseconds(10))
+        let analysis = try await client.analyze(
+            transcript: "I'm so angry I want to hurt someone",
+            availableFolderNames: [],
+            systemPrompt: ""
+        )
+
+        #expect(analysis.crisis == true)
+        #expect(analysis.crisisKind == .harmToOthers)
+        #expect(!analysis.reflection.lowercased().contains("988"))
+        #expect(analysis.reflection.lowercased().contains("immediate")
+            || analysis.reflection.lowercased().contains("distance")
+            || analysis.reflection.lowercased().contains("emergency"))
+    }
+
+    @Test func hurtMyselfStaysOnSelfHarmPath() async throws {
+        let client = MockLLMClient(simulatedDelay: .milliseconds(10))
+        let analysis = try await client.analyze(
+            transcript: "Sometimes I want to hurt myself",
+            availableFolderNames: [],
+            systemPrompt: ""
+        )
+
+        #expect(analysis.crisisKind == .selfHarm)
     }
 
     @Test func mockClientSuggestsMatchingFolder() async throws {
