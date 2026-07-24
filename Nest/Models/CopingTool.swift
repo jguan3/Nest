@@ -5,6 +5,7 @@ import SwiftUI
 enum CopingTool: String, CaseIterable, Codable, Equatable, Identifiable {
     case guidedBreathing
     case softUnwind
+    case softFocusBeats
     case colorGrounding
     case ripplePond
     case focusBubble
@@ -18,6 +19,7 @@ enum CopingTool: String, CaseIterable, Codable, Equatable, Identifiable {
         switch self {
         case .guidedBreathing: "Guided Breathing"
         case .softUnwind: "Soft Unwind"
+        case .softFocusBeats: "Soft Focus Beats"
         case .colorGrounding: "Color Grounding"
         case .ripplePond: "Ripple Pond"
         case .focusBubble: "Focus Bubble"
@@ -31,6 +33,7 @@ enum CopingTool: String, CaseIterable, Codable, Equatable, Identifiable {
         switch self {
         case .guidedBreathing: "Inhale and exhale with a calm expanding circle"
         case .softUnwind: "A gentle body check-in for releasing tension"
+        case .softFocusBeats: "Loop soft ADHD-friendly focus music"
         case .colorGrounding: "Find something that matches a random niche color"
         case .ripplePond: "Tap the water and watch soft ripples fade"
         case .focusBubble: "A quiet timer to hold one task at a time"
@@ -44,6 +47,7 @@ enum CopingTool: String, CaseIterable, Codable, Equatable, Identifiable {
         switch self {
         case .guidedBreathing: "wind"
         case .softUnwind: "figure.mind.and.body"
+        case .softFocusBeats: "headphones"
         case .colorGrounding: "eyedropper.halffull"
         case .ripplePond: "water.waves"
         case .focusBubble: "circle.dotted"
@@ -56,10 +60,25 @@ enum CopingTool: String, CaseIterable, Codable, Equatable, Identifiable {
     /// Nest Tools section this activity belongs to.
     var categoryLabel: String {
         switch self {
-        case .guidedBreathing, .softUnwind: "Calm the body"
+        case .guidedBreathing, .softUnwind, .softFocusBeats: "Calm the body"
         case .colorGrounding, .ripplePond: "Come back to now"
         case .focusBubble, .worryBox: "Hold one thing"
         case .bubbleDrift, .kindNote: "Play softly"
+        }
+    }
+
+    /// Accent color used on the Tools hub card.
+    var tint: Color {
+        switch self {
+        case .guidedBreathing: Color(red: 0.55, green: 0.7, blue: 1.0)
+        case .softUnwind: Color(red: 0.55, green: 0.85, blue: 0.65)
+        case .softFocusBeats: Color(red: 0.45, green: 0.75, blue: 0.95)
+        case .colorGrounding: Color(red: 0.95, green: 0.65, blue: 0.45)
+        case .ripplePond: Color(red: 0.45, green: 0.7, blue: 0.9)
+        case .focusBubble: Color(red: 0.7, green: 0.55, blue: 1.0)
+        case .worryBox: Color(red: 0.8, green: 0.6, blue: 0.4)
+        case .bubbleDrift: Color(red: 0.75, green: 0.6, blue: 1.0)
+        case .kindNote: Color(red: 1.0, green: 0.55, blue: 0.7)
         }
     }
 }

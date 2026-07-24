@@ -9,6 +9,7 @@ struct RecordingScreenView: View {
     let onStop: () -> Void
 
     @State private var glowPulse = false
+    @State private var lastBlipAmplitude: CGFloat = 0
 
     var body: some View {
         ZStack {
@@ -24,7 +25,7 @@ struct RecordingScreenView: View {
                 waveformStage
                     .padding(.horizontal, 20)
 
-                if !partialTranscript.isEmpty {
+                if !recentWords.isEmpty {
                     transcriptPreview
                         .padding(.horizontal, 32)
                         .padding(.top, 28)
@@ -41,6 +42,16 @@ struct RecordingScreenView: View {
             withAnimation(.easeInOut(duration: 1.6).repeatForever(autoreverses: true)) {
                 glowPulse = true
             }
+            NestSoundPlayer.shared.startListeningAmbience()
+            NestSoundPlayer.shared.play(.listeningStart)
+        }
+        .onDisappear {
+            NestSoundPlayer.shared.stopListeningAmbience()
+        }
+        .onChange(of: amplitude) { _, newAmplitude in
+            guard newAmplitude > 0.42, newAmplitude - lastBlipAmplitude > 0.18 else { return }
+            lastBlipAmplitude = newAmplitude
+            NestSoundPlayer.shared.play(.listeningBlip)
         }
     }
 
@@ -78,12 +89,25 @@ struct RecordingScreenView: View {
     }
 
     private var transcriptPreview: some View {
-        Text(partialTranscript)
+        Text(recentWords)
             .font(.title3.weight(.medium))
             .foregroundStyle(NestTheme.primaryText.opacity(0.92))
             .multilineTextAlignment(.center)
-            .lineSpacing(4)
-            .animation(.easeOut(duration: 0.12), value: partialTranscript)
+            .lineLimit(2)
+            .minimumScaleFactor(0.85)
+            .animation(.easeOut(duration: 0.12), value: recentWords)
+            .id(recentWords)
+            .transition(.opacity)
+    }
+
+    /// Keeps only the latest few spoken words so the screen stays calm.
+    private var recentWords: String {
+        let words = partialTranscript
+            .split { $0.isWhitespace || $0.isNewline }
+            .map(String.init)
+            .filter { !$0.isEmpty }
+        guard !words.isEmpty else { return "" }
+        return words.suffix(5).joined(separator: " ")
     }
 
     private var amplitudeGlow: some View {

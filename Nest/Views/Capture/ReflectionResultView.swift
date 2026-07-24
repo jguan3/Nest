@@ -11,6 +11,16 @@ struct ReflectionResultView: View {
     let onDismissClosing: () -> Void
 
     @State private var showToast = true
+    @AppStorage(ProfileAvatarStore.iconKey) private var avatarIconRaw = ProfileAvatarIcon.person.rawValue
+    @AppStorage(ProfileAvatarStore.colorKey) private var avatarColorRaw = ProfileAvatarColor.lilac.rawValue
+
+    private var avatarIcon: ProfileAvatarIcon {
+        ProfileAvatarIcon(rawValue: avatarIconRaw) ?? .person
+    }
+
+    private var avatarColor: ProfileAvatarColor {
+        ProfileAvatarColor(rawValue: avatarColorRaw) ?? .lilac
+    }
 
     var body: some View {
         ZStack {
@@ -51,19 +61,15 @@ struct ReflectionResultView: View {
     @ViewBuilder
     private func turnContent(_ turn: ReflectionTurn) -> some View {
         ScrollView {
-            VStack(alignment: .leading, spacing: 28) {
-                Spacer(minLength: 40)
+            VStack(alignment: .leading, spacing: 18) {
+                Spacer(minLength: 24)
 
                 Text(conversation.sourceLabel)
                     .font(.caption.weight(.semibold))
                     .foregroundStyle(NestTheme.secondaryText.opacity(0.85))
+                    .padding(.horizontal, 4)
 
-                Text(turn.reflection)
-                    .font(.title3)
-                    .fontWeight(.medium)
-                    .foregroundStyle(NestTheme.primaryText)
-                    .lineSpacing(6)
-                    .frame(maxWidth: .infinity, alignment: .leading)
+                conversationBubbles
 
                 let latestUserText = conversation.history
                     .last(where: { $0.role == .user })?
@@ -74,60 +80,17 @@ struct ReflectionResultView: View {
                 )
                 if !displayThemeNotes.isEmpty {
                     FlowThemeNotes(notes: displayThemeNotes)
-                }
-
-                if let followUp = turn.followUpQuestion, !followUp.isEmpty {
-                    Text(followUp)
-                        .font(.body)
-                        .foregroundStyle(NestTheme.secondaryText)
-                        .lineSpacing(4)
-                        .padding(.top, 4)
+                        .padding(.leading, 52)
                 }
 
                 Divider()
                     .overlay(NestTheme.cardStroke)
-
-                VStack(alignment: .leading, spacing: 14) {
-                    Text("Whenever you're ready")
-                        .font(.caption.weight(.semibold))
-                        .foregroundStyle(NestTheme.secondaryText)
-                        .textCase(.uppercase)
-                        .tracking(0.6)
-
-                    Button(action: onContinueReflecting) {
-                        ReflectionChoiceRow(
-                            title: "Continue reflecting",
-                            subtitle: "Share more by voice or text — only if you want to"
-                        )
-                    }
-                    .buttonStyle(ReflectionChoiceStyle())
-
-                    Button(action: onDoneForNow) {
-                        Text("Explore a calming exercise")
-                            .font(.subheadline.weight(.medium))
-                            .foregroundStyle(NestTheme.secondaryText)
-                            .frame(maxWidth: .infinity)
-                            .padding(.vertical, 10)
-                    }
-                    .buttonStyle(.plain)
-                    .padding(.top, 4)
-                    .accessibilityHint("See a few gentle exercises that might help you unwind")
-
-                    Button(action: onDismissClosing) {
-                        Text("I'm done for now")
-                            .font(.subheadline.weight(.medium))
-                            .foregroundStyle(NestTheme.secondaryText)
-                            .frame(maxWidth: .infinity)
-                            .padding(.vertical, 10)
-                    }
-                    .buttonStyle(.plain)
                     .padding(.top, 8)
-                    .accessibilityHint("Leave this reflection and return to Nest")
-                }
 
-                Spacer(minLength: 40)
+                actionChoices
             }
-            .padding(.horizontal, 28)
+            .padding(.horizontal, 20)
+            .padding(.bottom, 28)
         }
     }
 
@@ -136,21 +99,21 @@ struct ReflectionResultView: View {
     @ViewBuilder
     private func closingContent(_ closing: ReflectionClosing) -> some View {
         ScrollView {
-            VStack(alignment: .leading, spacing: 28) {
-                Spacer(minLength: 40)
+            VStack(alignment: .leading, spacing: 18) {
+                Spacer(minLength: 24)
 
                 Text(conversation.sourceLabel)
                     .font(.caption.weight(.semibold))
                     .foregroundStyle(NestTheme.secondaryText.opacity(0.85))
+                    .padding(.horizontal, 4)
 
-                Text(closing.summary)
-                    .font(.title3)
-                    .fontWeight(.medium)
-                    .foregroundStyle(NestTheme.primaryText)
-                    .lineSpacing(6)
+                conversationBubbles
+
+                birdBubble(text: closing.summary)
 
                 Divider()
                     .overlay(NestTheme.cardStroke)
+                    .padding(.top, 8)
 
                 Text(closing.invitationLine)
                     .font(.subheadline.weight(.medium))
@@ -179,11 +142,131 @@ struct ReflectionResultView: View {
                 }
                 .buttonStyle(.plain)
                 .padding(.top, 8)
-
-                Spacer(minLength: 40)
             }
-            .padding(.horizontal, 28)
+            .padding(.horizontal, 20)
+            .padding(.bottom, 28)
         }
+    }
+
+    private var conversationBubbles: some View {
+        VStack(spacing: 14) {
+            ForEach(conversation.history) { message in
+                switch message.role {
+                case .user:
+                    userBubble(text: message.text)
+                case .assistant:
+                    birdBubble(text: message.text)
+                }
+            }
+        }
+    }
+
+    private var actionChoices: some View {
+        VStack(alignment: .leading, spacing: 14) {
+            Text("Whenever you're ready")
+                .font(.caption.weight(.semibold))
+                .foregroundStyle(NestTheme.secondaryText)
+                .textCase(.uppercase)
+                .tracking(0.6)
+
+            Button(action: onContinueReflecting) {
+                ReflectionChoiceRow(
+                    title: "Continue reflecting",
+                    subtitle: "Share more by voice or text — only if you want to"
+                )
+            }
+            .buttonStyle(ReflectionChoiceStyle())
+
+            Button(action: onDoneForNow) {
+                Text("Explore a calming exercise")
+                    .font(.subheadline.weight(.medium))
+                    .foregroundStyle(NestTheme.secondaryText)
+                    .frame(maxWidth: .infinity)
+                    .padding(.vertical, 10)
+            }
+            .buttonStyle(.plain)
+            .padding(.top, 4)
+            .accessibilityHint("See a few gentle exercises that might help you unwind")
+
+            Button(action: onDismissClosing) {
+                Text("I'm done for now")
+                    .font(.subheadline.weight(.medium))
+                    .foregroundStyle(NestTheme.secondaryText)
+                    .frame(maxWidth: .infinity)
+                    .padding(.vertical, 10)
+            }
+            .buttonStyle(.plain)
+            .padding(.top, 8)
+            .accessibilityHint("Leave this reflection and return to Nest")
+        }
+    }
+
+    private func userBubble(text: String) -> some View {
+        HStack(alignment: .top, spacing: 10) {
+            Spacer(minLength: 36)
+
+            Text(text)
+                .font(.body)
+                .foregroundStyle(NestTheme.primaryText)
+                .lineSpacing(4)
+                .padding(.horizontal, 14)
+                .padding(.vertical, 12)
+                .background(
+                    RoundedRectangle(cornerRadius: 18, style: .continuous)
+                        .fill(Color.white.opacity(0.16))
+                        .overlay(
+                            RoundedRectangle(cornerRadius: 18, style: .continuous)
+                                .strokeBorder(NestTheme.cardStroke, lineWidth: 1)
+                        )
+                )
+
+            ProfileAvatarView(size: 40, icon: avatarIcon, color: avatarColor)
+        }
+        .accessibilityElement(children: .combine)
+        .accessibilityLabel("You said: \(text)")
+    }
+
+    private func birdBubble(text: String) -> some View {
+        HStack(alignment: .top, spacing: 10) {
+            NestBirdAvatarView(size: 40)
+
+            Text(text)
+                .font(.body)
+                .foregroundStyle(NestTheme.primaryText)
+                .lineSpacing(4)
+                .padding(.horizontal, 14)
+                .padding(.vertical, 12)
+                .background(
+                    RoundedRectangle(cornerRadius: 18, style: .continuous)
+                        .fill(NestTheme.cardBackground)
+                        .overlay(
+                            RoundedRectangle(cornerRadius: 18, style: .continuous)
+                                .strokeBorder(Color(red: 0.78, green: 0.68, blue: 1).opacity(0.35), lineWidth: 1)
+                        )
+                )
+                .overlay(alignment: .topLeading) {
+                    SpeechBubbleTail()
+                        .fill(NestTheme.cardBackground)
+                        .frame(width: 12, height: 12)
+                        .offset(x: -6, y: 14)
+                }
+
+            Spacer(minLength: 36)
+        }
+        .accessibilityElement(children: .combine)
+        .accessibilityLabel("Nest bird said: \(text)")
+    }
+}
+
+/// Small triangular tail for the bird speech bubble.
+private struct SpeechBubbleTail: Shape {
+    func path(in rect: CGRect) -> Path {
+        var path = Path()
+        path.move(to: CGPoint(x: rect.maxX, y: rect.minY))
+        path.addLine(to: CGPoint(x: rect.minX, y: rect.midY))
+        path.addLine(to: CGPoint(x: rect.maxX, y: rect.maxY))
+        path.closeSubpath()
+        return path
     }
 }
 
@@ -262,7 +345,7 @@ private struct ReflectionChoiceStyle: ButtonStyle {
         conversation: ReflectionConversation(
             phase: .showingTurn(
                 ReflectionTurn(
-                    reflection: "It sounds like school may be weighing on you right now. From what you shared, you might be carrying a sense of pressure — and that makes sense.",
+                    reflection: "It sounds like school may be weighing on you right now.",
                     themeNotes: ["a sense of overwhelm", "pressure around school"],
                     followUpQuestion: "If you could hold just one piece of school today, which would it be?",
                     feelsNaturalPause: false,
@@ -274,30 +357,14 @@ private struct ReflectionChoiceStyle: ButtonStyle {
                     preview: "Feeling weighed down by school and a sense of pressure."
                 )
             ),
-            history: [],
-            sourceLabel: "Offline Nest assistant"
-        ),
-        savedFolderName: "Inbox",
-        savedFolderColorName: "gray",
-        onContinueReflecting: {},
-        onDoneForNow: {},
-        onSelectActivity: { _ in },
-        onDismissClosing: {}
-    )
-}
-
-#Preview("Closing") {
-    ReflectionResultView(
-        conversation: ReflectionConversation(
-            phase: .showingClosing(
-                ReflectionClosing(
-                    summary: "From what you shared, it seems like school has been on your mind, and you might be carrying a sense of overwhelm.",
-                    invitationLine: ReflectionClosing.defaultInvitationLine,
-                    suggestedActivities: [.focusBubble, .worryBox, .guidedBreathing]
+            history: [
+                ChatMessage(role: .user, text: "School has been a lot lately."),
+                ChatMessage(
+                    role: .assistant,
+                    text: "It sounds like school may be weighing on you right now.\n\nIf you could hold just one piece of school today, which would it be?"
                 )
-            ),
-            history: [],
-            sourceLabel: "On-device Nest"
+            ],
+            sourceLabel: "Offline Nest assistant"
         ),
         savedFolderName: "Inbox",
         savedFolderColorName: "gray",

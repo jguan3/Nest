@@ -1,22 +1,32 @@
 import SwiftUI
 
-/// Shared visual styling for Nest screens.
+/// Shared visual styling for Nest screens, driven by the selected app theme.
 enum NestTheme {
-    static let backgroundGradient = LinearGradient(
-        colors: [
-            Color(red: 0.16, green: 0.10, blue: 0.30),
-            Color(red: 0.22, green: 0.14, blue: 0.40),
-            Color(red: 0.12, green: 0.16, blue: 0.34)
-        ],
-        startPoint: .top,
-        endPoint: .bottom
-    )
+    static var backgroundGradient: LinearGradient {
+        LinearGradient(
+            colors: NestAppTheme.current.backgroundColors,
+            startPoint: .top,
+            endPoint: .bottom
+        )
+    }
 
-    static let accentGradient = LinearGradient(
-        colors: [Color(red: 0.45, green: 0.55, blue: 1.0), Color(red: 0.65, green: 0.45, blue: 0.98)],
-        startPoint: .topLeading,
-        endPoint: .bottomTrailing
-    )
+    static var accentGradient: LinearGradient {
+        LinearGradient(
+            colors: NestAppTheme.current.accentColors,
+            startPoint: .topLeading,
+            endPoint: .bottomTrailing
+        )
+    }
+
+    /// Background gradient for an explicit theme value (for live theme pickers).
+    static func backgroundGradient(for theme: NestAppTheme) -> LinearGradient {
+        LinearGradient(colors: theme.backgroundColors, startPoint: .top, endPoint: .bottom)
+    }
+
+    /// Accent gradient for an explicit theme value.
+    static func accentGradient(for theme: NestAppTheme) -> LinearGradient {
+        LinearGradient(colors: theme.accentColors, startPoint: .topLeading, endPoint: .bottomTrailing)
+    }
 
     static let cardBackground = Color.white.opacity(0.08)
     static let cardStroke = Color.white.opacity(0.12)
@@ -26,27 +36,32 @@ enum NestTheme {
 
 /// Ambient animated background used across Nest screens.
 struct NestBackground: View {
+    @AppStorage(NestAppTheme.storageKey) private var themeRaw = NestAppTheme.duskPurple.rawValue
     @State private var drift = false
+
+    private var theme: NestAppTheme {
+        NestAppTheme(rawValue: themeRaw) ?? .duskPurple
+    }
 
     var body: some View {
         ZStack {
-            NestTheme.backgroundGradient
+            NestTheme.backgroundGradient(for: theme)
                 .ignoresSafeArea()
 
             Circle()
-                .fill(Color.purple.opacity(0.28))
+                .fill(theme.glowPrimary.opacity(0.28))
                 .frame(width: 300, height: 300)
                 .blur(radius: 70)
                 .offset(x: drift ? -90 : -130, y: drift ? -200 : -240)
 
             Circle()
-                .fill(Color.blue.opacity(0.22))
+                .fill(theme.glowSecondary.opacity(0.22))
                 .frame(width: 260, height: 260)
                 .blur(radius: 55)
                 .offset(x: drift ? 150 : 120, y: drift ? 200 : 160)
 
             Circle()
-                .fill(Color(red: 0.85, green: 0.45, blue: 0.75).opacity(0.12))
+                .fill(theme.glowTertiary.opacity(0.14))
                 .frame(width: 180, height: 180)
                 .blur(radius: 40)
                 .offset(x: drift ? 40 : -20, y: drift ? 80 : 120)
@@ -67,6 +82,7 @@ struct NestBackground: View {
                 drift = true
             }
         }
+        .animation(.easeInOut(duration: 0.35), value: themeRaw)
     }
 }
 

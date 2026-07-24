@@ -124,6 +124,7 @@ struct BreathingToolView: View {
 
     /// Starts the inhale/exhale animation loop.
     private func startBreathing() {
+        NestSoundPlayer.shared.play(.chime)
         isRunning = true
         cycleTask?.cancel()
         cycleTask = Task {
@@ -150,6 +151,7 @@ struct BreathingToolView: View {
     private func animatePhase(inhale: Bool) async {
         await MainActor.run {
             isInhale = inhale
+            NestSoundPlayer.shared.play(inhale ? .breathIn : .breathOut)
             withAnimation(.easeInOut(duration: inhale ? inhaleSeconds : exhaleSeconds)) {
                 scale = inhale ? 1.15 : 0.55
             }

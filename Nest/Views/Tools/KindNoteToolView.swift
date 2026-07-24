@@ -97,6 +97,8 @@ struct KindNoteToolView: View {
                         let trimmed = note.trimmingCharacters(in: .whitespacesAndNewlines)
                         guard !trimmed.isEmpty else { return }
                         isFocused = false
+                        NestSoundPlayer.shared.play(.sparkle)
+                        NestHaptics.softTap()
                         withAnimation {
                             savedNote = trimmed
                             persistedNote = trimmed

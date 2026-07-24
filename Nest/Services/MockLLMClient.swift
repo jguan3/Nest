@@ -162,6 +162,7 @@ struct MockLLMClient: LLMClient, ChatClient {
             || lower.contains("want to die")
             || lower.contains("suicide")
             || lower.contains("end my life")
+            || lower.contains("suicidal")
     }
 
     private func containsHarmToOthersLanguage(_ lower: String) -> Bool {

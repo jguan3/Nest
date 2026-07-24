@@ -3,8 +3,14 @@ import SwiftUI
 
 /// Personal tab showing profile level and mood reflection history.
 struct PersonalView: View {
+    let activeOnboardingHighlight: OnboardingHighlight?
+
     @Query(sort: \MoodEntry.createdAt, order: .reverse) private var moodEntries: [MoodEntry]
     @AppStorage(XPStore.totalXPKey) private var totalXP = 0
+    @AppStorage(ProfileAvatarStore.iconKey) private var avatarIconRaw = ProfileAvatarIcon.person.rawValue
+    @AppStorage(ProfileAvatarStore.colorKey) private var avatarColorRaw = ProfileAvatarColor.lilac.rawValue
+    @State private var isAvatarPickerPresented = false
+    @State private var isSettingsPresented = false
 
     private let placeholderLevel = 1
     private let placeholderBirdName = "Nestling"
@@ -14,28 +20,78 @@ struct PersonalView: View {
         MoodStore.latestToday(from: moodEntries)
     }
 
+    private var avatarIcon: ProfileAvatarIcon {
+        ProfileAvatarIcon(rawValue: avatarIconRaw) ?? .person
+    }
+
+    private var avatarColor: ProfileAvatarColor {
+        ProfileAvatarColor(rawValue: avatarColorRaw) ?? .lilac
+    }
+
+    init(activeOnboardingHighlight: OnboardingHighlight? = nil) {
+        self.activeOnboardingHighlight = activeOnboardingHighlight
+    }
+
     var body: some View {
         ZStack {
             NestBackground()
 
-            ScrollView(showsIndicators: false) {
-                VStack(spacing: 28) {
-                    Text("Personal")
-                        .font(.largeTitle.weight(.bold))
-                        .foregroundStyle(NestTheme.primaryText)
-                        .frame(maxWidth: .infinity, alignment: .leading)
+            ScrollViewReader { scrollProxy in
+                ScrollView(showsIndicators: false) {
+                    VStack(spacing: 28) {
+                        HStack(alignment: .center) {
+                            Text("Personal")
+                                .font(.largeTitle.weight(.bold))
+                                .foregroundStyle(NestTheme.primaryText)
+
+                            Spacer()
+
+                            Button {
+                                isSettingsPresented = true
+                            } label: {
+                                Image(systemName: "gearshape.fill")
+                                    .font(.body.weight(.semibold))
+                                    .foregroundStyle(NestTheme.primaryText)
+                                    .frame(width: 44, height: 44)
+                                    .background(
+                                        Circle()
+                                            .fill(NestTheme.cardBackground)
+                                            .overlay(Circle().strokeBorder(NestTheme.cardStroke, lineWidth: 1))
+                                    )
+                            }
+                            .buttonStyle(.plain)
+                            .accessibilityLabel("Settings")
+                        }
                         .padding(.horizontal, 24)
                         .padding(.top, 8)
 
-                    profileCard
+                        profileCard
 
-                    todaysLandingCard
+                        todaysLandingCard
 
-                    MoodHistorySection(moodEntries: moodEntries)
-                        .padding(.horizontal, 24)
-                        .padding(.bottom, 32)
+                        MoodHistorySection(moodEntries: moodEntries)
+                            .onboardingAnchor(.history)
+                            .id(OnboardingHighlight.history)
+                            .padding(.horizontal, 24)
+                            .padding(.bottom, 32)
+                    }
+                }
+                .onChange(of: activeOnboardingHighlight) { _, highlight in
+                    guard highlight == .history else { return }
+                    withAnimation(.spring(response: 0.5, dampingFraction: 0.88)) {
+                        scrollProxy.scrollTo(OnboardingHighlight.history, anchor: .bottom)
+                    }
                 }
             }
+        }
+        .sheet(isPresented: $isAvatarPickerPresented) {
+            ProfileAvatarPickerSheet(
+                selectedIcon: $avatarIconRaw,
+                selectedColor: $avatarColorRaw
+            )
+        }
+        .sheet(isPresented: $isSettingsPresented) {
+            SettingsView()
         }
     }
 
@@ -46,16 +102,27 @@ struct PersonalView: View {
 
     private var profileCard: some View {
         VStack(spacing: 18) {
-            ZStack {
-                Circle()
-                    .fill(NestTheme.cardBackground)
-                    .frame(width: 110, height: 110)
-                    .overlay(Circle().strokeBorder(NestTheme.cardStroke, lineWidth: 1))
+            Button {
+                isAvatarPickerPresented = true
+            } label: {
+                ZStack(alignment: .bottomTrailing) {
+                    ProfileAvatarView(size: 110, icon: avatarIcon, color: avatarColor)
 
-                Image(systemName: "person.fill")
-                    .font(.system(size: 44))
-                    .foregroundStyle(NestTheme.primaryText.opacity(0.9))
+                    Image(systemName: "paintpalette.fill")
+                        .font(.caption.weight(.bold))
+                        .foregroundStyle(Color.white)
+                        .padding(8)
+                        .background(Circle().fill(NestTheme.accentGradient))
+                        .offset(x: 4, y: 4)
+                }
             }
+            .buttonStyle(.plain)
+            .accessibilityLabel("Choose profile look")
+            .accessibilityHint("Opens the built-in avatar and color library")
+
+            Text("Tap to choose a look")
+                .font(.caption.weight(.semibold))
+                .foregroundStyle(NestTheme.secondaryText)
 
             Text("Level \(placeholderLevel)")
                 .font(.title.weight(.bold))

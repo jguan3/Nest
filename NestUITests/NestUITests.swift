@@ -23,14 +23,32 @@ final class NestUITests: XCTestCase {
     }
 
     @MainActor
-    func testExample() throws {
-        // UI tests must launch the application that they test.
+    func testFirstLaunchOnboardingFlowPersistsCompletion() throws {
         let app = XCUIApplication()
+        app.launchArguments = ["-resetOnboarding"]
         app.launch()
 
-        // Use XCTAssert and related functions to verify your tests produce the correct results.
-        // XCUIAutomation Documentation
-        // https://developer.apple.com/documentation/xcuiautomation
+        XCTAssertTrue(app.staticTexts["Welcome to Nested 👋"].waitForExistence(timeout: 3))
+        app.buttons["Start Tour"].tap()
+
+        for expectedTitle in [
+            "Daily Mood Check-In",
+            "Reflect Freely",
+            "Wellness Tools",
+            "Look Back and Learn"
+        ] {
+            XCTAssertTrue(app.staticTexts[expectedTitle].waitForExistence(timeout: 2))
+            app.buttons["Next"].tap()
+        }
+
+        XCTAssertTrue(app.staticTexts["You're all set 🌱"].waitForExistence(timeout: 2))
+        app.buttons["Start Exploring"].tap()
+        XCTAssertFalse(app.staticTexts["You're all set 🌱"].waitForExistence(timeout: 1))
+
+        app.terminate()
+        app.launchArguments = []
+        app.launch()
+        XCTAssertFalse(app.staticTexts["Welcome to Nested 👋"].waitForExistence(timeout: 1))
     }
 
     @MainActor

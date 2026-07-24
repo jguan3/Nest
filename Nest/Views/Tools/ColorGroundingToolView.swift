@@ -57,6 +57,8 @@ struct ColorGroundingToolView: View {
                                 .padding(.horizontal, 28)
                         } else {
                             Button {
+                                NestSoundPlayer.shared.play(.chime)
+                                NestHaptics.softTap()
                                 withAnimation {
                                     foundIt = true
                                 }
@@ -147,7 +149,19 @@ struct NicheColor: Equatable {
         NicheColor(name: "Candle Wax", red: 0.92, green: 0.86, blue: 0.70),
         NicheColor(name: "Electric Teal", red: 0.10, green: 0.72, blue: 0.68),
         NicheColor(name: "Brick Dust", red: 0.68, green: 0.32, blue: 0.28),
-        NicheColor(name: "Lavender Ash", red: 0.68, green: 0.62, blue: 0.78)
+        NicheColor(name: "Lavender Ash", red: 0.68, green: 0.62, blue: 0.78),
+        NicheColor(name: "Honeydew Mist", red: 0.78, green: 0.92, blue: 0.72),
+        NicheColor(name: "Coral Bloom", red: 0.98, green: 0.48, blue: 0.42),
+        NicheColor(name: "Indigo Night", red: 0.28, green: 0.22, blue: 0.55),
+        NicheColor(name: "Buttercream", red: 0.98, green: 0.90, blue: 0.62),
+        NicheColor(name: "Pine Shadow", red: 0.22, green: 0.38, blue: 0.28),
+        NicheColor(name: "Cherry Blush", red: 0.86, green: 0.32, blue: 0.42),
+        NicheColor(name: "Sky Porcelain", red: 0.72, green: 0.84, blue: 0.95),
+        NicheColor(name: "Amber Glow", red: 0.95, green: 0.68, blue: 0.28),
+        NicheColor(name: "Lilac Frost", red: 0.82, green: 0.72, blue: 0.92),
+        NicheColor(name: "Jade Stream", red: 0.22, green: 0.68, blue: 0.55),
+        NicheColor(name: "Cocoa Pod", red: 0.42, green: 0.26, blue: 0.18),
+        NicheColor(name: "Neon Orchid", red: 0.78, green: 0.28, blue: 0.72)
     ]
 
     /// Picks a random niche color, optionally skipping the current one.

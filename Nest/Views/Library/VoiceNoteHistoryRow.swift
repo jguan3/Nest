@@ -4,6 +4,7 @@ import SwiftUI
 struct VoiceNoteHistoryRow: View {
     let thought: Thought
     var onEditTitle: (() -> Void)?
+    var onToggleOvercome: (() -> Void)?
 
     var body: some View {
         VStack(alignment: .leading, spacing: 6) {
@@ -12,6 +13,13 @@ struct VoiceNoteHistoryRow: View {
                     .font(.headline)
                     .foregroundStyle(NestTheme.primaryText)
                     .lineLimit(2)
+
+                if thought.isOvercome {
+                    Image(systemName: "checkmark.seal.fill")
+                        .font(.caption)
+                        .foregroundStyle(Color(red: 0.55, green: 0.85, blue: 0.65))
+                        .accessibilityLabel("Overcome")
+                }
 
                 Spacer(minLength: 8)
 
@@ -28,11 +36,28 @@ struct VoiceNoteHistoryRow: View {
         .padding(.vertical, 4)
         .contentShape(Rectangle())
         .accessibilityElement(children: .combine)
-        .accessibilityLabel("\(thought.displayTitle), \(thought.displayPreview), \(thought.createdAt.formatted(date: .abbreviated, time: .shortened))")
+        .accessibilityLabel(accessibilitySummary)
         .contextMenu {
             if let onEditTitle {
                 Button("Edit Title") { onEditTitle() }
             }
+            if let onToggleOvercome {
+                Button(thought.isOvercome ? "Unmark overcome" : "Mark as overcome") {
+                    onToggleOvercome()
+                }
+            }
         }
+    }
+
+    private var accessibilitySummary: String {
+        var parts = [
+            thought.displayTitle,
+            thought.displayPreview,
+            thought.createdAt.formatted(date: .abbreviated, time: .shortened)
+        ]
+        if thought.isOvercome {
+            parts.append("Marked as overcome")
+        }
+        return parts.joined(separator: ", ")
     }
 }

@@ -1,4 +1,4 @@
-import AVFoundation
+@preconcurrency import AVFoundation
 import Combine
 import Speech
 
@@ -83,7 +83,7 @@ final class SpeechRecognitionService: ObservableObject {
         errorMessage = nil
 
         let audioSession = AVAudioSession.sharedInstance()
-        try audioSession.setCategory(.playAndRecord, mode: .spokenAudio, options: [.defaultToSpeaker, .allowBluetooth])
+        try audioSession.setCategory(.playAndRecord, mode: .spokenAudio, options: [.defaultToSpeaker, .allowBluetoothHFP])
         try audioSession.setActive(true, options: .notifyOthersOnDeactivation)
 
         let request = SFSpeechAudioBufferRecognitionRequest()
@@ -240,6 +240,7 @@ final class SpeechRecognitionService: ObservableObject {
 
             var consumed = false
             var conversionError: NSError?
+            nonisolated(unsafe) let inputBuffer = buffer
             converter.convert(to: converted, error: &conversionError) { _, status in
                 if consumed {
                     status.pointee = .noDataNow
@@ -247,7 +248,7 @@ final class SpeechRecognitionService: ObservableObject {
                 }
                 consumed = true
                 status.pointee = .haveData
-                return buffer
+                return inputBuffer
             }
 
             if conversionError == nil, converted.frameLength > 0 {

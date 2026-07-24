@@ -26,27 +26,43 @@ enum MoodStore {
     /// Inserts a new mood check-in and saves the context.
     /// - Parameters:
     ///   - mood: The selected mood option.
+    ///   - journalText: Optional journal text to attach to the entry.
     ///   - modelContext: SwiftData context to insert into.
     /// - Returns: The newly created entry.
+    /// - Throws: A SwiftData error when fetching or saving fails.
     @discardableResult
     static func insert(
         _ mood: MoodOption,
+        journalText: String? = nil,
         in modelContext: ModelContext
-    ) -> MoodEntry {
-        let existingEntries = (try? modelContext.fetch(FetchDescriptor<MoodEntry>())) ?? []
+    ) throws -> MoodEntry {
+        let existingEntries = try modelContext.fetch(FetchDescriptor<MoodEntry>())
         let isFirstCheckInToday = todaysEntries(from: existingEntries).isEmpty
 
-        let entry = MoodEntry(mood: mood)
+        let entry = MoodEntry(
+            mood: mood,
+            journalText: normalizedJournalText(journalText)
+        )
         modelContext.insert(entry)
         do {
             try modelContext.save()
-            if isFirstCheckInToday {
-                XPStore.awardDailyCheckInIfNeeded()
-            }
         } catch {
-            print("MoodStore: failed to save mood entry — \(error.localizedDescription)")
+            modelContext.delete(entry)
+            throw error
+        }
+        if isFirstCheckInToday {
+            XPStore.awardDailyCheckInIfNeeded()
         }
         return entry
+    }
+
+    /// Trims journal text and converts an empty reflection to `nil`.
+    /// - Parameter journalText: Raw journal text entered by the user.
+    /// - Returns: Trimmed text, or `nil` when no meaningful text remains.
+    static func normalizedJournalText(_ journalText: String?) -> String? {
+        guard let journalText else { return nil }
+        let trimmedText = journalText.trimmingCharacters(in: .whitespacesAndNewlines)
+        return trimmedText.isEmpty ? nil : trimmedText
     }
 
     /// Filters entries that fall on the current calendar day.

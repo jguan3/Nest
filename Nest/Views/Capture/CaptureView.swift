@@ -161,6 +161,7 @@ struct CaptureView: View {
                     Task { await viewModel.startRecording() }
                 }
             }
+            .onboardingAnchor(.voiceReflection)
             .padding(.horizontal, 24)
 
             textComposer

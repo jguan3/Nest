@@ -19,6 +19,8 @@ final class Thought {
     var title: String = ""
     /// One-line history preview generated once at save time.
     var preview: String = ""
+    /// Whether the user marked this note as something they overcame.
+    var isOvercome: Bool = false
 
     var folder: ThoughtFolder?
 
@@ -36,6 +38,7 @@ final class Thought {
         isCrisis: Bool = false,
         title: String = "",
         preview: String = "",
+        isOvercome: Bool = false,
         folder: ThoughtFolder? = nil
     ) {
         self.id = id
@@ -51,6 +54,7 @@ final class Thought {
         self.isCrisis = isCrisis
         self.title = title
         self.preview = preview
+        self.isOvercome = isOvercome
         self.folder = folder
     }
 

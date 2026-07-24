@@ -86,7 +86,7 @@ struct WorryBoxToolView: View {
                         }
                     }
                     .frame(height: 240)
-                    .animation(.easeInOut(duration: 0.85), value: isReleased)
+                    .animation(.easeInOut(duration: 1.8), value: isReleased)
 
                     if isReleased {
                         Text("You don’t have to carry that alone right now.")
@@ -119,7 +119,7 @@ struct WorryBoxToolView: View {
         .navigationBarTitleDisplayMode(.inline)
         .toolbarBackground(.hidden, for: .navigationBar)
         .onAppear {
-            withAnimation(.easeInOut(duration: 1.8).repeatForever(autoreverses: true)) {
+            withAnimation(.easeInOut(duration: 3.6).repeatForever(autoreverses: true)) {
                 sparkle = true
             }
         }
@@ -140,26 +140,30 @@ struct WorryBoxToolView: View {
 
     private func sealWorry() {
         isFocused = false
-        withAnimation(.spring(response: 0.35, dampingFraction: 0.8)) {
+        NestSoundPlayer.shared.play(.seal)
+        NestHaptics.mediumTap()
+        withAnimation(.spring(response: 0.7, dampingFraction: 0.86)) {
             isSealed = true
             boxScale = 1.05
         }
-        withAnimation(.easeOut(duration: 0.25).delay(0.15)) {
+        withAnimation(.easeOut(duration: 0.55).delay(0.3)) {
             boxScale = 1
         }
     }
 
     private func releaseWorry() {
-        withAnimation(.easeInOut(duration: 0.85)) {
+        NestSoundPlayer.shared.play(.release)
+        NestHaptics.softTap()
+        withAnimation(.easeInOut(duration: 1.8)) {
             isReleased = true
         }
-        DispatchQueue.main.asyncAfter(deadline: .now() + 0.9) {
+        DispatchQueue.main.asyncAfter(deadline: .now() + 1.9) {
             worryText = ""
         }
     }
 
     private func reset() {
-        withAnimation(.spring(response: 0.35, dampingFraction: 0.85)) {
+        withAnimation(.spring(response: 0.7, dampingFraction: 0.88)) {
             isSealed = false
             isReleased = false
             boxScale = 1

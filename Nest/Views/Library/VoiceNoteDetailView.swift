@@ -44,6 +44,30 @@ struct VoiceNoteDetailView: View {
                         .font(.subheadline)
                         .foregroundStyle(NestTheme.secondaryText)
 
+                    Button {
+                        toggleOvercome()
+                    } label: {
+                        HStack(spacing: 8) {
+                            Image(systemName: thought.isOvercome ? "checkmark.seal.fill" : "checkmark.seal")
+                            Text(thought.isOvercome ? "Marked as overcome" : "Mark as overcome")
+                                .font(.subheadline.weight(.semibold))
+                        }
+                        .foregroundStyle(
+                            thought.isOvercome
+                                ? Color(red: 0.55, green: 0.85, blue: 0.65)
+                                : NestTheme.primaryText
+                        )
+                        .padding(.horizontal, 14)
+                        .padding(.vertical, 10)
+                        .background(
+                            Capsule()
+                                .fill(NestTheme.cardBackground)
+                                .overlay(Capsule().strokeBorder(NestTheme.cardStroke, lineWidth: 1))
+                        )
+                    }
+                    .buttonStyle(.plain)
+                    .accessibilityHint("Marks that you have moved past this note")
+
                     VoiceMemoCard(
                         thought: thought,
                         colorName: colorName,
@@ -85,6 +109,17 @@ struct VoiceNoteDetailView: View {
             try modelContext.save()
         } catch {
             print("Could not save voice note title: \(error)")
+        }
+    }
+
+    /// Toggles the overcome flag for this note.
+    private func toggleOvercome() {
+        thought.isOvercome.toggle()
+        do {
+            try modelContext.save()
+        } catch {
+            thought.isOvercome.toggle()
+            print("Could not update overcome state: \(error)")
         }
     }
 }

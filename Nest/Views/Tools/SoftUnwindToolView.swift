@@ -91,6 +91,7 @@ struct SoftUnwindToolView: View {
 
     /// Starts cycling through unwind steps.
     private func start() {
+        NestSoundPlayer.shared.play(.breathIn)
         isRunning = true
         stepIndex = 0
         cycleTask?.cancel()
@@ -99,9 +100,11 @@ struct SoftUnwindToolView: View {
                 try? await Task.sleep(for: .seconds(8))
                 guard !Task.isCancelled else { break }
                 await MainActor.run {
+                    NestSoundPlayer.shared.play(.softPop)
                     if stepIndex < steps.count - 1 {
                         stepIndex += 1
                     } else {
+                        NestSoundPlayer.shared.play(.chime)
                         stop()
                     }
                 }

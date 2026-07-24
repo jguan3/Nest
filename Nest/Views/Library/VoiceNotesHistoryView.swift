@@ -30,6 +30,9 @@ struct VoiceNotesHistoryView: View {
                                     onEditTitle: {
                                         thoughtPendingTitleEdit = thought
                                         editedTitle = thought.displayTitle
+                                    },
+                                    onToggleOvercome: {
+                                        toggleOvercome(thought)
                                     }
                                 )
                             }
@@ -43,6 +46,12 @@ struct VoiceNotesHistoryView: View {
                                     editedTitle = thought.displayTitle
                                 }
                                 .tint(NestTheme.primaryText.opacity(0.7))
+                            }
+                            .swipeActions(edge: .leading, allowsFullSwipe: true) {
+                                Button(thought.isOvercome ? "Unmark" : "Overcome") {
+                                    toggleOvercome(thought)
+                                }
+                                .tint(Color(red: 0.45, green: 0.7, blue: 0.55))
                             }
                         }
                     }
@@ -125,6 +134,17 @@ struct VoiceNotesHistoryView: View {
             try modelContext.save()
         } catch {
             print("Could not save voice note title: \(error)")
+        }
+    }
+
+    /// Toggles whether a history note is marked as overcome.
+    private func toggleOvercome(_ thought: Thought) {
+        thought.isOvercome.toggle()
+        do {
+            try modelContext.save()
+        } catch {
+            thought.isOvercome.toggle()
+            print("Could not update overcome state: \(error)")
         }
     }
 }

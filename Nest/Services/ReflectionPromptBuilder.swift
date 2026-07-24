@@ -32,7 +32,7 @@ enum ReflectionPromptBuilder {
 
         Crisis rules (choose one kind; never mix self-harm resources with harm-to-others):
         - crisisKind must be one of: "none", "selfHarm", "harmToOthers". Set crisis true only when crisisKind is not "none".
-        - Self-harm / suicidal intent (wanting to die, kill myself, end my life): set crisisKind to "selfHarm".
+        - Self-harm / suicidal intent (wanting to die, kill myself, end my life, feels suicidal): set crisisKind to "selfHarm".
           Do not write a normal reflection — set reflection to a brief supportive message encouraging crisis resources (call/text 988).
         - Harm toward others (want to hurt/attack/kill/harm/seriously injure someone else, or clear violent intent toward others):
           set crisisKind to "harmToOthers". Do NOT recommend the suicide hotline.

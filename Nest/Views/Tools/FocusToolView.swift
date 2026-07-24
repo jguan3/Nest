@@ -143,6 +143,7 @@ struct FocusToolView: View {
 
     /// Starts the focus countdown.
     private func startFocus() {
+        NestSoundPlayer.shared.play(.chime)
         remainingSeconds = totalSeconds
         isRunning = true
         pulse = true
@@ -155,6 +156,8 @@ struct FocusToolView: View {
             }
             if remainingSeconds == 0 {
                 await MainActor.run {
+                    NestSoundPlayer.shared.play(.sparkle)
+                    NestHaptics.mediumTap()
                     isRunning = false
                     pulse = false
                 }
